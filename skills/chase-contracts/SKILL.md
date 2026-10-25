@@ -1,12 +1,12 @@
 ---
 name: chase-contracts
-description: Write, check, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that a set of component contracts refines a system contract, find the contract of a missing component (quotient), merge viewpoints, check consistency, compatibility, or GR(1) realizability, simplify or saturate a contract, or explain a counterexample from these checks.
+description: Write, check, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that a set of component contracts refines a system contract, find the contract of a missing component (quotient), merge viewpoints, check consistency, compatibility, or GR(1) realizability, simplify, saturate, or remove redundant terms of a contract, or explain a counterexample from these checks.
 ---
 
 # Assume-guarantee contracts with CHASE
 
 CHASE (https://chase-cps.github.io) represents requirements as assume-guarantee
-contracts over LTL and checks them with a model checker (nuXmv or NuSMV) or a
+contracts over LTL and checks them with a model checker (nuXmv) or a
 GR(1) synthesis tool (slugs).
 
 ## Tools
@@ -19,7 +19,7 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | **Contract operations that build contracts** | |
 | `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
 | `quotient`, `separation` | `system.quotient(part)`, `system.separation(part)` |
-| `saturate`, `simplify` | `c.saturate()`, `chase_cps.simplify(c)` |
+| `saturate`, `simplify`, `remove_redundant` | `c.saturate()`, `c.simplify()`, `chase_cps.remove_redundant(c)` |
 | **Contract operations that check contracts** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
 | `consistent`, `compatible`, `realizable` | `chase_cps.consistent(c)`, `chase_cps.compatible(c)`, `chase_cps.realizable(c)` |
@@ -35,7 +35,8 @@ a status and, when they fail, a counterexample.
 In Python a contract is built with
 `Contract.from_dict(d)` or `Contract.from_strings(inputs=..., outputs=..., assumptions=..., guarantees=..., name=...)`.
 If the checks fail with "no model checker found", tell the user to install
-nuXmv or NuSMV (or set `CHASE_NUXMV` / `CHASE_NUSMV` to the executable).
+nuXmv: `chase-cps install nuxmv --accept-license` (free for academic and
+non-commercial use), or set `CHASE_NUXMV` to the executable.
 
 ## Contracts
 
@@ -73,7 +74,7 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 
 1. **Write the contracts.** One contract per component, and one for the whole
    system. Keep each requirement as a separate formula: the checks and
-   `simplify` work term by term.
+   `remove_redundant` work term by term.
 2. **Sanity checks.** Run `compatible` (some environment satisfies the
    assumptions) and `consistent` (some behavior satisfies A -> G) on every
    contract. An unsat result means contradictory assumptions or guarantees.
@@ -101,7 +102,8 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 6. **Viewpoints.** Use `merge` for different aspects of the same component
    (function, timing, safety), and `separation` to remove a viewpoint.
    Use `conjoin` when several specifications must hold at once.
-7. **Clean up.** `simplify` drops the terms implied by the others.
+7. **Clean up.** `remove_redundant` drops the terms implied by the others;
+   `simplify` rewrites the formulas into a shorter equivalent form.
    `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
    user the behaviors a contract allows; the other operations saturate their
    operands themselves.
@@ -134,7 +136,7 @@ explains it. Read the one closest to the task before starting:
 - `pipeline.json`: composition, a failed refinement of the assumptions and
   its fix, vacuity, and the quotient.
 - `tank.json`: from natural-language requirements to a contract;
-  compatibility, simplification, and consistency versus realizability.
+  compatibility, removal of redundant terms, and consistency versus realizability.
 - `viewpoints.json`: merging viewpoints, checking an implementation, and
   separation.
 - `chase-spec.json`: reading and writing specifications in the CHASE

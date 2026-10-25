@@ -1,6 +1,6 @@
 {
   "title": "Water tank: from requirements to a realizable contract",
-  "shows": "Formalizing natural-language requirements, catching contradictory assumptions, simplifying, and why a consistent contract can still be unrealizable.",
+  "shows": "Formalizing natural-language requirements, catching contradictory assumptions, removing redundant terms, and why a consistent contract can still be unrealizable.",
   "requirements": [
     "R1. The tank is never low and full at the same time (environment).",
     "R2. The tank does not stay full forever (environment).",
@@ -27,7 +27,7 @@
      "note": "R1 written with the extra assumptions 'always low' and 'eventually full' cannot hold together: no environment satisfies them, and every check on this contract would hold vacuously."},
     {"tool": "compatible", "args": {"contract": "$Tank"},
      "expect": {"status": "sat"}},
-    {"tool": "simplify", "args": {"contract": "$TankRedundant"},
+    {"tool": "remove_redundant", "args": {"contract": "$TankRedundant"},
      "expect": {"removed_assumptions": ["F !full"], "removed_guarantees": ["G (full & low -> !pump)"]},
      "note": "F !full follows from G F !full, and the third guarantee follows from G (full -> !pump)."},
     {"tool": "consistent", "args": {"contract": "$Tank"},

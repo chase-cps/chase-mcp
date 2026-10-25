@@ -165,13 +165,22 @@ def saturate(contract: ContractSpec, name: str | None = None) -> dict:
 
 
 @tool
-def simplify(contract: ContractSpec, timeout: float = 60,
-             backend: Backend = "auto") -> dict:
-    """Simplification: drop the assumptions implied by the other assumptions,
-    and the guarantees implied by the assumptions and the other guarantees.
-    Returns the simplified contract and the terms removed; terms whose check
-    did not finish are kept and listed in `unknown`."""
-    return chase_cps.simplify(contract.build(), backend, timeout=timeout).to_dict()
+def simplify(contract: ContractSpec, name: str | None = None) -> dict:
+    """Simplify the formulas of the contract, as the simplify command of
+    logics_tool: negations are moved towards the atoms, and temporal
+    operators are grouped (G f & G g becomes G (f & g)). The result is
+    equivalent; no model checker is needed."""
+    return contract.build().simplify(name).to_dict()
+
+
+@tool
+def remove_redundant(contract: ContractSpec, timeout: float = 60,
+                     backend: Backend = "auto") -> dict:
+    """Drop the assumptions implied by the other assumptions, and the
+    guarantees implied by the assumptions and the other guarantees.
+    Returns the contract and the terms removed; terms whose check did not
+    finish are kept and listed in `unknown`."""
+    return chase_cps.remove_redundant(contract.build(), backend, timeout=timeout).to_dict()
 
 
 # Contract operations that check contracts -----------------------------------

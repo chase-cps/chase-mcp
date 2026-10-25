@@ -21,8 +21,10 @@ contract):
 - **quotient**: the contract of a missing component.
 - **separation**: the adjoint of merging.
 - **saturate**: the equivalent contract (A, A -> G).
-- **simplify**: removes the assumptions and guarantees implied by the other
-  terms of the contract.
+- **simplify**: rewrites the formulas, as the simplify command of
+  `logics_tool` (negations moved to the atoms, temporal operators grouped).
+- **remove_redundant**: removes the assumptions and guarantees implied by the
+  other terms of the contract.
 
 Contract operations that check contracts (each tool returns a status and,
 when the check fails, a counterexample):
@@ -64,13 +66,13 @@ and `x'` for the value of `x` in the next step.
 ## Requirements
 
 - The CHASE Python package, `chase-cps`, installed with the server.
-- A model checker for the checks: [nuXmv][NUXMV] (preferred) or
-  [NuSMV][NUSMV], in the `PATH` or given with the environment variables
-  `CHASE_NUXMV` and `CHASE_NUSMV`.
+- [nuXmv][NUXMV] for the checks (free for academic and non-commercial use),
+  in the `PATH` or given with the environment variable `CHASE_NUXMV`;
+  [NuSMV][NUSMV] where nuXmv cannot be used.
 - [slugs][SLUGS] for the realizability checks.
 
-`chase-cps install nuxmv --accept-license` (or `nusmv`, `slugs`) installs
-them, and `chase-cps doctor` shows the tools found.
+`chase-cps install nuxmv --accept-license` and `chase-cps install slugs`
+install them, and `chase-cps doctor` shows the tools found.
 The [CHASE Docker image][CHASE] contains all of them.
 
 ## Installation
@@ -159,7 +161,7 @@ the tests, so the results they state are the ones CHASE returns.
 
 `$> pytest`
 
-The tests need nuXmv or NuSMV in the `PATH`.
+The tests need nuXmv (`chase-cps install nuxmv --accept-license`).
 
 ## License
 
