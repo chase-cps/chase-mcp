@@ -69,6 +69,7 @@ and `x'` for the value of `x` in the next step.
   `CHASE_NUXMV` and `CHASE_NUSMV`.
 - [slugs][SLUGS] for the realizability checks.
 
+`chase-cps doctor` shows the tools found and how to install the missing ones.
 The [CHASE Docker image][CHASE] contains all of them.
 
 ## Installation
