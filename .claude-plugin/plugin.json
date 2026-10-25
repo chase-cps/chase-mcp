@@ -1,0 +1,11 @@
+{
+  "name": "chase",
+  "version": "0.1.0",
+  "description": "Assume-guarantee contracts in LTL with CHASE: composition, quotient, refinement, consistency, compatibility, and realizability checks, with counterexamples.",
+  "author": {
+    "name": "CHASE developers"
+  },
+  "homepage": "https://chase-cps.github.io",
+  "repository": "https://github.com/chase-cps/chase-mcp",
+  "license": "BSD-3-Clause"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "chase-cps",
+  "description": "Plugins of the CHASE project (https://chase-cps.github.io).",
+  "owner": {
+    "name": "CHASE developers"
+  },
+  "plugins": [
+    {
+      "name": "chase",
+      "source": "./",
+      "description": "MCP server and skill for assume-guarantee contracts with CHASE."
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+---
+name: chase-contracts
+description: Write, check, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that a set of component contracts refines a system contract, find the contract of a missing component (quotient), merge viewpoints, check consistency, compatibility, or GR(1) realizability, or explain a counterexample from these checks.
+---
+
+# Assume-guarantee contracts with CHASE
+
+CHASE (https://chase-cps.github.io) represents requirements as assume-guarantee
+contracts over LTL and checks them with a model checker (nuXmv or NuSMV) or a
+GR(1) synthesis tool (slugs).
+
+## Tools
+
+Use the tools of the `chase` MCP server when they are available. Otherwise use
+the Python package `chase_cps` (`pip install chase-cps`):
+
+| MCP tool | Python |
+|---|---|
+| `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
+| `quotient`, `separation` | `system.quotient(part)`, `system.separation(part)` |
+| `refines` | `chase_cps.refines(refined, abstract)` |
+| `consistent`, `compatible`, `realizable` | `chase_cps.consistent(c)`, `chase_cps.compatible(c)`, `chase_cps.realizable(c)` |
+| `implies`, `satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.satisfiable(phi, variables)` |
+| `contains_environment`, `contains_implementation` | same names in `chase_cps` |
+| `remove_redundant` | `chase_cps.remove_redundant(c)` |
+| `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
+
+In Python a contract is built with
+`Contract.from_dict(d)` or `Contract.from_strings(inputs=..., outputs=..., assumptions=..., guarantees=..., name=...)`.
+If the checks fail with "no model checker found", tell the user to install
+nuXmv or NuSMV (or set `CHASE_NUXMV` / `CHASE_NUSMV` to the executable).
+
+## Contracts
+
+```json
+{"name": "Arbiter",
+ "inputs": {"req": "bool", "n": [0, 3]},
+ "outputs": {"grant": "bool"},
+ "assumptions": ["G F !req"],
+ "guarantees": ["G (req -> F grant)"]}
+```
+
+- Inputs are controlled by the environment, outputs by the component.
+  Variables are `"bool"` or bounded integers `[low, high]`; keep the ranges
+  small, the checks get slower with large ranges.
+- Assumptions are what the component expects of its environment; guarantees
+  are what it promises when the assumptions hold. Both lists are read as
+  conjunctions.
+- Contracts are read as saturated: the allowed behaviors are those of
+  A -> G. A contract with false assumptions allows everything.
+- Variables with the same name in two contracts are the same variable: this
+  is how components are connected. No variable can be an output of two
+  composed contracts.
+
+## Formulas
+
+`! & | -> <->`, `G F X U R W`, `true false`, relations `= != < <= > >=`,
+arithmetic `+ - * /`, and `x'` for the value of `x` in the next step.
+Unary operators bind tighter than binary ones: `G a -> b` means
+`(G a) -> b`; write `G (a -> b)`.
+
+Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
+`P`, `NAME`, `CONTRACT`, `integer`. Use `p1`, `ready`, and so on.
+
+## Workflow
+
+1. **Write the contracts.** One contract per component, and one for the whole
+   system. Keep each requirement as a separate formula: the checks and
+   `remove_redundant` work term by term.
+2. **Sanity checks.** Run `compatible` (some environment satisfies the
+   assumptions) and `consistent` (some behavior satisfies A -> G) on every
+   contract. An unsat result means contradictory assumptions or guarantees.
+3. **Compose and refine.** Compose the component contracts and check that the
+   result `refines` the system contract.
+4. **Read the result.**
+   - `valid`: the components meet the system contract. Check that the
+     composite is still `compatible`: assumptions that cannot be satisfied
+     make every refinement hold vacuously.
+   - `invalid`: `failed` says which part fails. For `assumptions`, the trace
+     is an environment allowed by the system contract that a component does
+     not accept: weaken the component assumptions or strengthen the system
+     assumptions. For `guarantees`, the trace is a behavior of the components
+     that violates the system guarantees: strengthen a component guarantee,
+     or the system contract asks for too much.
+   - `unknown`: the check did not finish (see `reason`). Increase `timeout`,
+     use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges.
+5. **Missing components.** `quotient(system, part)` gives the contract of the
+   component still to design: the largest contract that, composed with
+   `part`, refines `system`. `realizable` tells whether it can be implemented,
+   and gives a controller or a counter-strategy of the environment.
+6. **Viewpoints.** Use `merge` for different aspects of the same component
+   (function, timing, safety), and `separation` to remove a viewpoint.
+   Use `conjoin` when several specifications must hold at once.
+7. **Clean up.** `remove_redundant` drops the terms implied by the others.
+
+## Traces
+
+A trace is a list of `prefix` states followed by a `loop` of states repeated
+forever. Each state gives the value of every variable. Explain a
+counterexample to the user step by step ("at step 2 req is true, and grant
+stays false in the loop"), point to the requirement it violates, and propose
+a change. Do not make a check pass by adding `false` or contradictory
+assumptions.
+
+## Realizability
+
+`realizable` uses slugs and needs formulas in the GR(1) fragment: initial
+conditions without temporal operators, safety `G (...)` over the current
+and next values (`x'`), and liveness `G F (...)`. When a contract is not in
+this form the result is `unknown` with the reason; rewrite the formulas, or
+use the model checker based tools instead.
+
+See `references/examples.md` for complete examples.
