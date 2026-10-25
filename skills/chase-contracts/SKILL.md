@@ -17,16 +17,16 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | MCP tool | Python |
 |---|---|
 | **Contract operations that build contracts** | |
-| `compose`, `conjunction`, `disjunction`, `merging` | `c1.compose(c2)`, `c1.conjunction(c2)`, `c1.disjunction(c2)`, `c1.merging(c2)` |
-| `quotient`, `separation` | `system.quotient(part)`, `system.separation(part)` |
+| `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
+| `divide` (quotient), `separate` | `system.divide(part)`, `system.separate(part)` |
 | `saturate`, `simplify`, `remove_redundant` | `c.saturate()`, `c.simplify()`, `chase_cps.remove_redundant(c)` |
 | **Contract operations that check contracts** | |
-| `refinement` | `chase_cps.refinement(refined, abstract)` |
-| `verify`, `compatible`, `consistent` | `chase_cps.verify(c)`, `chase_cps.compatible(c)`, `chase_cps.consistent(c)` |
-| `synthesize` | `chase_cps.synthesize(c)` |
-| `contains_environment`, `contains_implementation` | same names in `chase_cps` |
+| `refines` | `chase_cps.refines(refined, abstract)` |
+| `verify`, `is_compatible`, `is_consistent` | `chase_cps.verify(c)`, `chase_cps.is_compatible(c)`, `chase_cps.is_consistent(c)` |
+| `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
+| `accepts`, `implements` | `chase_cps.accepts(c, environment)`, `chase_cps.implements(implementation, c)` |
 | **LTL formulas** | |
-| `implies`, `satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.satisfiable(phi, variables)` |
+| `implies`, `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
 | **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 
@@ -80,14 +80,14 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
    contract is compatible (some environment satisfies the assumptions) and
    consistent (some behavior satisfies A -> G). An unsat result means contradictory assumptions or guarantees.
    A consistent contract can still be unrealizable: consistency only says
-   that some environment and some component agree. Use `synthesize` when the
-   question is whether a component can be built.
+   that some environment and some component agree. Use `is_realizable` when
+   the question is whether a component can be built.
 3. **Compose and refine.** Compose the component contracts and check that the
-   result refines the system contract (`refinement`).
+   result refines the system contract (`refines`).
 4. **Read the result.**
    - `valid`: the components meet the system contract. Check that the
-     composite is still `compatible`: assumptions that cannot be satisfied
-     make every refinement hold vacuously.
+     composite is still compatible (`is_compatible`): assumptions that cannot
+     be satisfied make every refinement hold vacuously.
    - `invalid`: `failed` says which part fails. For `assumptions`, the trace
      is an environment allowed by the system contract that a component does
      not accept: weaken the component assumptions or strengthen the system
@@ -96,13 +96,14 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
      or the system contract asks for too much.
    - `unknown`: the check did not finish (see `reason`). Increase `timeout`,
      use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges.
-5. **Missing components.** `quotient(system, part)` gives the contract of the
-   component still to design: the largest contract that, composed with
-   `part`, refines `system`. `synthesize` tells whether it can be implemented,
-   and gives a controller or a counter-strategy of the environment.
-6. **Viewpoints.** Use `merging` for different aspects of the same component
-   (function, timing, safety), and `separation` to remove a viewpoint.
-   Use `conjunction` when several specifications must hold at once.
+5. **Missing components.** `divide(system, part)` (the quotient) gives the
+   contract of the component still to design: the largest contract that,
+   composed with `part`, refines `system`. `is_realizable` tells whether it
+   can be implemented (or gives a counter-strategy of the environment), and
+   `synthesize` builds the controller.
+6. **Viewpoints.** Use `merge` for different aspects of the same component
+   (function, timing, safety), and `separate` to remove a viewpoint.
+   Use `conjoin` when several specifications must hold at once.
 7. **Clean up.** `remove_redundant` drops the terms implied by the others;
    `simplify` rewrites the formulas into a shorter equivalent form.
    `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
@@ -120,7 +121,7 @@ assumptions.
 
 ## Realizability
 
-`synthesize` uses slugs and needs formulas in the GR(1) fragment: initial
+`is_realizable` and `synthesize` use slugs and need formulas in the GR(1) fragment: initial
 conditions without temporal operators, safety `G (...)` over the current
 and next values (`x'`), and liveness `G F (...)`. When a contract is not in
 this form the result is `unknown` with the reason; rewrite the formulas, or

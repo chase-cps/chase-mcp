@@ -16,11 +16,11 @@ contract):
 
 - **compose**: parallel composition of two or more contracts; variables with
   the same name are connected.
-- **conjunction** and **disjunction**: greatest lower bound and least upper
-  bound.
-- **merging**: merging of viewpoints of the same component.
-- **quotient**: the contract of a missing component.
-- **separation**: the adjoint of merging.
+- **conjoin** and **disjoin**: conjunction and disjunction (greatest lower
+  bound and least upper bound).
+- **merge**: merging of viewpoints of the same component.
+- **divide**: the quotient, i.e. the contract of a missing component.
+- **separate**: separation, the adjoint of merging.
 - **saturate**: the equivalent contract (A, A -> G).
 - **simplify**: rewrites the formulas, as the simplify command of
   `logics_tool` (negations moved to the atoms, temporal operators grouped).
@@ -30,20 +30,20 @@ contract):
 Contract operations that check contracts (each tool returns a status and,
 when the check fails, a counterexample):
 
-- **refinement**: whether a contract refines another one, and which part
-  fails (assumptions or guarantees).
-- **verify**: compatibility and consistency; **compatible** (some environment
-  satisfies the assumptions) and **consistent** (some behavior satisfies the
-  contract) check them one at a time.
-- **synthesize**: GR(1) realizability, with the controller or the
-  counter-strategy of the environment.
-- **contains_environment** and **contains_implementation**: whether an
-  environment or an implementation, given as LTL formulas, is accepted by the
-  contract.
+- **refines**: whether a contract refines another one, and which part fails
+  (assumptions or guarantees).
+- **verify**: compatibility and consistency; **is_compatible** (some
+  environment satisfies the assumptions) and **is_consistent** (some behavior
+  satisfies the contract) check them one at a time.
+- **is_realizable**: GR(1) realizability, with the counter-strategy of the
+  environment when unrealizable; **synthesize** also builds the controller.
+- **accepts** and **implements**: whether the contract accepts an
+  environment, and whether an implementation implements the contract, both
+  given as LTL formulas.
 
 LTL formulas:
 
-- **implies** and **satisfiable**: validity of an implication and
+- **implies** and **is_satisfiable**: validity of an implication and
   satisfiability of a formula.
 
 Specifications:

@@ -123,38 +123,38 @@ def compose(contracts: list[ContractSpec], name: str | None = None) -> dict:
 
 
 @tool
-def conjunction(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def conjoin(contracts: list[ContractSpec], name: str | None = None) -> dict:
     """Conjunction (greatest lower bound) of two or more contracts: a contract
     that refines all of them, (A1 | A2, G1 & G2)."""
-    return _fold(contracts, "conjunction", name)
+    return _fold(contracts, "conjoin", name)
 
 
 @tool
-def disjunction(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def disjoin(contracts: list[ContractSpec], name: str | None = None) -> dict:
     """Disjunction (least upper bound) of two or more contracts: a contract
     refined by all of them, (A1 & A2, G1 | G2)."""
-    return _fold(contracts, "disjunction", name)
+    return _fold(contracts, "disjoin", name)
 
 
 @tool
-def merging(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def merge(contracts: list[ContractSpec], name: str | None = None) -> dict:
     """Merging of two or more viewpoints of the same component (e.g. function
     and timing): (A1 & A2, (G1 & G2) | !(A1 & A2))."""
-    return _fold(contracts, "merging", name)
+    return _fold(contracts, "merge", name)
 
 
 @tool
-def quotient(system: ContractSpec, part: ContractSpec, name: str | None = None) -> dict:
+def divide(system: ContractSpec, part: ContractSpec, name: str | None = None) -> dict:
     """The contract of the missing component: the largest contract C such that
     part composed with C refines system. (A & G', (G & A') | !(A & G'))."""
-    return system.build().quotient(part.build(), name).to_dict()
+    return system.build().divide(part.build(), name).to_dict()
 
 
 @tool
-def separation(system: ContractSpec, part: ContractSpec, name: str | None = None) -> dict:
+def separate(system: ContractSpec, part: ContractSpec, name: str | None = None) -> dict:
     """Separation, the adjoint of merging: the smallest contract C such that
     system refines the merging of part and C. ((A & G') | !(G & A'), G & A')."""
-    return system.build().separation(part.build(), name).to_dict()
+    return system.build().separate(part.build(), name).to_dict()
 
 
 @tool
@@ -186,13 +186,13 @@ def remove_redundant(contract: ContractSpec, timeout: float = 60,
 # Contract operations that check contracts -----------------------------------
 
 @tool
-def refinement(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
+def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
             backend: Backend = "auto") -> dict:
     """Does `refined` refine `abstract` (can it replace it)? Checks that the
     assumptions of `abstract` imply those of `refined`, and that the
     guarantees of `refined` imply those of `abstract`. status is valid,
     invalid (with `failed` and a counterexample trace), or unknown."""
-    return chase_cps.refinement(refined.build(), abstract.build(), backend,
+    return chase_cps.refines(refined.build(), abstract.build(), backend,
                              timeout=timeout).to_dict()
 
 
@@ -206,48 +206,56 @@ def verify(contract: ContractSpec, timeout: float = 300,
 
 
 @tool
-def consistent(contract: ContractSpec, timeout: float = 300,
+def is_consistent(contract: ContractSpec, timeout: float = 300,
                backend: Backend = "auto") -> dict:
     """Consistency: is there a behavior allowed by the contract (A -> G
     satisfiable)? sat with a witness trace, or unsat when the guarantees
     contradict each other."""
-    return chase_cps.consistent(contract.build(), backend, timeout=timeout).to_dict()
+    return chase_cps.is_consistent(contract.build(), backend, timeout=timeout).to_dict()
 
 
 @tool
-def compatible(contract: ContractSpec, timeout: float = 300,
+def is_compatible(contract: ContractSpec, timeout: float = 300,
                backend: Backend = "auto") -> dict:
     """Compatibility: is there an environment that satisfies the assumptions?
     sat with a witness trace, or unsat when the assumptions contradict each
     other."""
-    return chase_cps.compatible(contract.build(), backend, timeout=timeout).to_dict()
+    return chase_cps.is_compatible(contract.build(), backend, timeout=timeout).to_dict()
+
+
+@tool
+def is_realizable(contract: ContractSpec, timeout: float = 300) -> dict:
+    """GR(1) realizability with slugs: can a component choose its outputs so
+    that the guarantees hold for every environment satisfying the
+    assumptions? realizable, or unrealizable with the counter-strategy of the
+    environment. Needs slugs; the formulas must be in the GR(1) fragment."""
+    return chase_cps.is_realizable(contract.build(), timeout=timeout).to_dict()
 
 
 @tool
 def synthesize(contract: ContractSpec, timeout: float = 300) -> dict:
-    """GR(1) realizability with slugs: can a component choose its outputs so
-    that the guarantees hold for every environment satisfying the
-    assumptions? Returns the controller, or the counter-strategy of the
-    environment. Needs slugs; the formulas must be in the GR(1) fragment."""
+    """GR(1) synthesis with slugs: the controller (an explicit strategy) when
+    the contract is realizable, or the counter-strategy of the environment.
+    Needs slugs; the formulas must be in the GR(1) fragment."""
     return chase_cps.synthesize(contract.build(), timeout=timeout).to_dict()
 
 
 @tool
-def contains_environment(contract: ContractSpec, environment: str, timeout: float = 300,
-                         backend: Backend = "auto") -> dict:
-    """Is the environment (an LTL formula over the variables of the contract)
-    accepted by the contract, i.e. environment -> A?"""
-    return chase_cps.contains_environment(contract.build(), environment, backend,
-                                          timeout=timeout).to_dict()
+def accepts(contract: ContractSpec, environment: str, timeout: float = 300,
+            backend: Backend = "auto") -> dict:
+    """Does the contract accept the environment (an LTL formula over the
+    variables of the contract), i.e. environment -> A?"""
+    return chase_cps.accepts(contract.build(), environment, backend,
+                             timeout=timeout).to_dict()
 
 
 @tool
-def contains_implementation(contract: ContractSpec, implementation: str,
-                            timeout: float = 300, backend: Backend = "auto") -> dict:
+def implements(implementation: str, contract: ContractSpec, timeout: float = 300,
+               backend: Backend = "auto") -> dict:
     """Does the implementation (an LTL formula describing the behaviors of a
-    component) satisfy the contract, i.e. implementation & A -> G?"""
-    return chase_cps.contains_implementation(contract.build(), implementation, backend,
-                                             timeout=timeout).to_dict()
+    component) implement the contract, i.e. implementation & A -> G?"""
+    return chase_cps.implements(implementation, contract.build(), backend,
+                                timeout=timeout).to_dict()
 
 
 # LTL formulas ---------------------------------------------------------------
@@ -262,10 +270,10 @@ def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 
 
 
 @tool
-def satisfiable(formula: str, variables: dict[str, VarType], timeout: float = 300,
+def is_satisfiable(formula: str, variables: dict[str, VarType], timeout: float = 300,
                 backend: Backend = "auto") -> dict:
     """Is the LTL formula satisfiable? sat with a witness trace, or unsat."""
-    return chase_cps.satisfiable(formula, _variables(variables), backend,
+    return chase_cps.is_satisfiable(formula, _variables(variables), backend,
                                  timeout=timeout).to_dict()
 
 

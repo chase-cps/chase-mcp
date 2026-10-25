@@ -8,23 +8,23 @@
                "guarantees": ["G (X grant -> req)"]}
   },
   "steps": [
-    {"tool": "merging", "args": {"contracts": ["$Function", "$Timing"], "name": "Arbiter"},
+    {"tool": "merge", "args": {"contracts": ["$Function", "$Timing"], "name": "Arbiter"},
      "save": "Arbiter",
      "note": "Both viewpoints describe the same component, so they are merged, not composed."},
-    {"tool": "contains_implementation",
+    {"tool": "implements",
      "args": {"contract": "$Arbiter", "implementation": "G (X grant <-> req)"},
      "expect": {"status": "valid"},
      "note": "Granting exactly one step after each request satisfies both viewpoints."},
-    {"tool": "contains_implementation",
+    {"tool": "implements",
      "args": {"contract": "$Arbiter", "implementation": "G grant"},
      "expect": {"status": "invalid"},
      "note": "Always granting satisfies the functional viewpoint but not the timing one: the trace grants one step after a step with no request."},
-    {"tool": "separation", "args": {"system": "$Arbiter", "part": "$Timing", "name": "Rest"},
+    {"tool": "separate", "args": {"system": "$Arbiter", "part": "$Timing", "name": "Rest"},
      "save": "Rest",
      "note": "The smallest contract that, merged with Timing, gives back a contract refined by Arbiter."},
-    {"tool": "merging", "args": {"contracts": ["$Timing", "$Rest"]},
+    {"tool": "merge", "args": {"contracts": ["$Timing", "$Rest"]},
      "save": "Back"},
-    {"tool": "refinement", "args": {"refined": "$Arbiter", "abstract": "$Back"},
+    {"tool": "refines", "args": {"refined": "$Arbiter", "abstract": "$Back"},
      "expect": {"status": "valid"}}
   ]
 }
