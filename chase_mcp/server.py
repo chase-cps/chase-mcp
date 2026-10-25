@@ -115,11 +115,28 @@ def _fold(contracts: list[ContractSpec], operation: str, name: str | None) -> di
 # Contract operations that build contracts -----------------------------------
 
 @tool
-def compose(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def compose(contracts: list[ContractSpec], name: str | None = None, discharge: bool = False,
+            timeout: float = 60, backend: Backend = "auto") -> dict:
     """Parallel composition of two or more contracts (the contract of the
     system made of the components). Variables with the same name are
-    connected; no variable can be an output of two contracts."""
-    return _fold(contracts, "compose", name)
+    connected; no variable can be an output of two contracts.
+
+    By default the closed form ((A1 & A2) | !(G1 & G2), G1 & G2). With
+    discharge, the result keeps the terms of the contracts: an assumption of
+    a component implied by the component that drives its inputs is dropped,
+    then the redundant terms; each test is one model-checking call. That
+    result is an abstraction of the composition: a refinement proved on it
+    holds for the composition, a failed one may not."""
+    if not discharge:
+        return _fold(contracts, "compose", name)
+    if len(contracts) < 2:
+        raise ValueError("give at least two contracts")
+    result = contracts[0].build()
+    for spec in contracts[1:]:
+        result = result.compose(spec.build(), discharge=True, backend=backend, timeout=timeout)
+    if name:
+        result.name = name
+    return result.to_dict()
 
 
 @tool
@@ -155,6 +172,43 @@ def separate(system: ContractSpec, part: ContractSpec, name: str | None = None) 
     """Separation, the adjoint of merging: the smallest contract C such that
     system refines the merging of part and C. ((A & G') | !(G & A'), G & A')."""
     return system.build().separate(part.build(), name).to_dict()
+
+
+@tool
+def imply(premise: ContractSpec, conclusion: ContractSpec, name: str | None = None) -> dict:
+    """Implication, the adjoint of conjunction: the largest contract C such
+    that the conjunction of C and premise refines conclusion.
+    ((A2 & !A1) | (G1 & !G2), G2 | !G1), with premise = (A1, G1)."""
+    return premise.build().imply(conclusion.build(), name).to_dict()
+
+
+@tool
+def coimply(first: ContractSpec, second: ContractSpec, name: str | None = None) -> dict:
+    """Coimplication, the adjoint of disjunction: the smallest contract C such
+    that second refines the disjunction of C and first.
+    (A2 | !A1, (G2 & !G1) | (A1 & !A2)), with first = (A1, G1)."""
+    return first.build().coimply(second.build(), name).to_dict()
+
+
+@tool
+def invert(contract: ContractSpec, name: str | None = None) -> dict:
+    """Reciprocal (G, A): the contract seen from its environment. Inputs
+    become outputs and outputs inputs."""
+    return contract.build().invert(name).to_dict()
+
+
+@tool
+def assume(contract: ContractSpec, formula: str, name: str | None = None) -> dict:
+    """Add an assumption b to the contract: (b & A, b -> G). The result is an
+    abstraction of the contract (it is refined by it)."""
+    return contract.build().assume(formula, name).to_dict()
+
+
+@tool
+def ensure(contract: ContractSpec, formula: str, name: str | None = None) -> dict:
+    """Add a guarantee b to the contract: (b -> A, b & G). The result refines
+    the contract."""
+    return contract.build().ensure(formula, name).to_dict()
 
 
 @tool

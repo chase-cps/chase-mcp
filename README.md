@@ -15,12 +15,18 @@ Contract operations that build contracts (each tool returns a new
 contract):
 
 - **compose**: parallel composition of two or more contracts; variables with
-  the same name are connected.
+  the same name are connected. With `discharge`, the result keeps the terms
+  of the contracts and drops the assumptions discharged by the other
+  contracts.
 - **conjoin** and **disjoin**: conjunction and disjunction (greatest lower
   bound and least upper bound).
 - **merge**: merging of viewpoints of the same component.
 - **divide**: the quotient, i.e. the contract of a missing component.
 - **separate**: separation, the adjoint of merging.
+- **imply** and **coimply**: implication and coimplication, the adjoints of
+  conjunction and disjunction.
+- **invert**: the reciprocal (G, A), the contract seen from its environment.
+- **assume** and **ensure**: add an assumption or a guarantee.
 - **saturate**: the equivalent contract (A, A -> G).
 - **simplify**: rewrites the formulas, as the simplify command of
   `logics_tool` (negations moved to the atoms, temporal operators grouped).

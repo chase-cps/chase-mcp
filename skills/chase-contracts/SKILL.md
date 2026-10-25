@@ -19,6 +19,8 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | **Contract operations that build contracts** | |
 | `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
 | `divide` (quotient), `separate` | `system.divide(part)`, `system.separate(part)` |
+| `imply`, `coimply`, `invert` | `c1.imply(c2)`, `c1.coimply(c2)`, `c.invert()` |
+| `assume`, `ensure` | `c.assume("G F req")`, `c.ensure("G (grant -> X !grant)")` |
 | `saturate`, `simplify`, `remove_redundant` | `c.saturate()`, `c.simplify()`, `chase_cps.remove_redundant(c)` |
 | **Contract operations that check contracts** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
@@ -83,7 +85,11 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
    that some environment and some component agree. Use `is_realizable` when
    the question is whether a component can be built.
 3. **Compose and refine.** Compose the component contracts and check that the
-   result refines the system contract (`refines`).
+   result refines the system contract (`refines`). With `discharge`, the
+   composite keeps the terms of the components, which is easier to read and
+   often faster to check; it is an abstraction of the composition, so a
+   `valid` refinement holds, but an `invalid` one must be confirmed on the
+   composition without `discharge`.
 4. **Read the result.**
    - `valid`: the components meet the system contract. Check that the
      composite is still compatible (`is_compatible`): assumptions that cannot

@@ -42,7 +42,8 @@ def test_tools_are_listed():
     assert {"compose", "conjoin", "disjoin", "merge", "divide", "separate", "saturate",
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
-            "accepts", "remove_redundant", "read_spec", "write_spec"} == asyncio.run(run())
+            "accepts", "remove_redundant", "read_spec", "write_spec", "imply", "coimply",
+            "invert", "assume", "ensure"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -63,6 +64,10 @@ def test_compose_then_refine():
     err, comp = call("compose", {"contracts": [c1, c2], "name": "Sys"})
     assert not err and comp["name"] == "Sys" and "b" in comp["outputs"]
     err, r = call("refines", {"refined": comp, "abstract": top})
+    assert not err and r["status"] == "valid"
+    err, terms = call("compose", {"contracts": [c1, c2], "discharge": True})
+    assert not err and terms["assumptions"] == ["G a"]
+    err, r = call("refines", {"refined": terms, "abstract": top})
     assert not err and r["status"] == "valid"
 
 
@@ -165,3 +170,20 @@ def test_saturate_simplify_and_remove_redundant():
     assert r["removed_assumptions"] == ["F !req"]
     assert r["removed_guarantees"] == ["G (req -> F grant)"]
     assert r["contract"]["guarantees"] == ["G (req -> X grant)"]
+
+
+def test_implication_reciprocal_and_actions():
+    err, i = call("imply", {"premise": SPEC, "conclusion": IMPL})
+    assert not err
+    err, meet = call("conjoin", {"contracts": [i, SPEC]})
+    assert call("refines", {"refined": meet, "abstract": IMPL})[1]["status"] == "valid"
+    err, k = call("coimply", {"first": SPEC, "second": IMPL})
+    assert not err and k["name"]
+    err, r = call("invert", {"contract": SPEC})
+    assert not err and set(r["inputs"]) == {"grant"} and set(r["outputs"]) == {"req"}
+    err, a = call("assume", {"contract": SPEC, "formula": "G F grant"})
+    assert call("refines", {"refined": SPEC, "abstract": a})[1]["status"] == "valid"
+    err, e = call("ensure", {"contract": SPEC, "formula": "G (grant -> X !grant)"})
+    assert call("refines", {"refined": e, "abstract": SPEC})[1]["status"] == "valid"
+    err, msg = call("assume", {"contract": SPEC, "formula": "G z"})
+    assert err and "undeclared" in msg
