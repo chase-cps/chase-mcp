@@ -1,6 +1,6 @@
 ---
 name: chase-contracts
-description: Write, check, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that a set of component contracts refines a system contract, find the contract of a missing component (quotient), merge viewpoints, check consistency, compatibility, or GR(1) realizability, or explain a counterexample from these checks.
+description: Write, check, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that a set of component contracts refines a system contract, find the contract of a missing component (quotient), merge viewpoints, check consistency, compatibility, or GR(1) realizability, simplify or saturate a contract, or explain a counterexample from these checks.
 ---
 
 # Assume-guarantee contracts with CHASE
@@ -16,14 +16,21 @@ the Python package `chase_cps` (`pip install chase-cps`):
 
 | MCP tool | Python |
 |---|---|
+| **Contract operations that build contracts** | |
 | `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
 | `quotient`, `separation` | `system.quotient(part)`, `system.separation(part)` |
+| `saturate`, `simplify` | `c.saturate()`, `chase_cps.simplify(c)` |
+| **Contract operations that check contracts** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
 | `consistent`, `compatible`, `realizable` | `chase_cps.consistent(c)`, `chase_cps.compatible(c)`, `chase_cps.realizable(c)` |
-| `implies`, `satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.satisfiable(phi, variables)` |
 | `contains_environment`, `contains_implementation` | same names in `chase_cps` |
-| `remove_redundant` | `chase_cps.remove_redundant(c)` |
+| **LTL formulas** | |
+| `implies`, `satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.satisfiable(phi, variables)` |
+| **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
+
+The operations that build contracts return a new contract. The checks return
+a status and, when they fail, a counterexample.
 
 In Python a contract is built with
 `Contract.from_dict(d)` or `Contract.from_strings(inputs=..., outputs=..., assumptions=..., guarantees=..., name=...)`.
@@ -66,10 +73,13 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 
 1. **Write the contracts.** One contract per component, and one for the whole
    system. Keep each requirement as a separate formula: the checks and
-   `remove_redundant` work term by term.
+   `simplify` work term by term.
 2. **Sanity checks.** Run `compatible` (some environment satisfies the
    assumptions) and `consistent` (some behavior satisfies A -> G) on every
    contract. An unsat result means contradictory assumptions or guarantees.
+   A consistent contract can still be unrealizable: consistency only says
+   that some environment and some component agree. Use `realizable` when the
+   question is whether a component can be built.
 3. **Compose and refine.** Compose the component contracts and check that the
    result `refines` the system contract.
 4. **Read the result.**
@@ -91,7 +101,10 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 6. **Viewpoints.** Use `merge` for different aspects of the same component
    (function, timing, safety), and `separation` to remove a viewpoint.
    Use `conjoin` when several specifications must hold at once.
-7. **Clean up.** `remove_redundant` drops the terms implied by the others.
+7. **Clean up.** `simplify` drops the terms implied by the others.
+   `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
+   user the behaviors a contract allows; the other operations saturate their
+   operands themselves.
 
 ## Traces
 
@@ -110,4 +123,19 @@ and next values (`x'`), and liveness `G F (...)`. When a contract is not in
 this form the result is `unknown` with the reason; rewrite the formulas, or
 use the model checker based tools instead.
 
-See `references/examples.md` for complete examples.
+## Examples
+
+The `examples` folder contains complete examples. Each file lists the
+contracts and the steps: the tool, its arguments (`$Name` is a contract of the
+file or the result of an earlier step), the expected result, and a note that
+explains it. Read the one closest to the task before starting:
+
+- `arbiter.json`: refinement, and reading a counterexample.
+- `pipeline.json`: composition, a failed refinement of the assumptions and
+  its fix, vacuity, and the quotient.
+- `tank.json`: from natural-language requirements to a contract;
+  compatibility, simplification, and consistency versus realizability.
+- `viewpoints.json`: merging viewpoints, checking an implementation, and
+  separation.
+- `chase-spec.json`: reading and writing specifications in the CHASE
+  language.

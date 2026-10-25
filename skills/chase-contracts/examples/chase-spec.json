@@ -1,0 +1,20 @@
+{
+  "title": "Specifications in the CHASE language",
+  "shows": "Reading contracts from a specification written for logics_tool, and checking them.",
+  "spec": "NAME: pipeline;\n\nCONTRACT Sensor:\n    input boolean variable obstacle;\n    output boolean variable alarm;\n    Assumptions:\n        true;\n    Guarantees:\n        G(alarm <-> obstacle);\n\nCONTRACT Brake:\n    input boolean variable alarm;\n    output boolean variable stop;\n    Assumptions:\n        G(F(!(alarm)));\n    Guarantees:\n        G(alarm -> X(stop));\n",
+  "contracts": {
+    "Car": {"name": "Car", "inputs": {"obstacle": "bool"}, "outputs": {"stop": "bool"},
+            "assumptions": ["G F !obstacle"], "guarantees": ["G (obstacle -> X stop)"]}
+  },
+  "steps": [
+    {"tool": "read_spec", "args": {"text": "$spec"},
+     "save_contracts": true,
+     "note": "Returns the contracts of the specification as JSON, here Sensor and Brake."},
+    {"tool": "compose", "args": {"contracts": ["$Sensor", "$Brake"]},
+     "save": "System"},
+    {"tool": "refines", "args": {"refined": "$System", "abstract": "$Car"},
+     "expect": {"status": "valid"}},
+    {"tool": "write_spec", "args": {"contracts": ["$System", "$Car"], "name": "pipeline_check"},
+     "note": "Writes the contracts back in the CHASE language, e.g. to run them with logics_tool."}
+  ]
+}

@@ -112,7 +112,7 @@ def _fold(contracts: list[ContractSpec], operation: str, name: str | None) -> di
     return result.to_dict()
 
 
-# Contract algebra -----------------------------------------------------------
+# Contract operations that build contracts -----------------------------------
 
 @tool
 def compose(contracts: list[ContractSpec], name: str | None = None) -> dict:
@@ -157,7 +157,24 @@ def separation(system: ContractSpec, part: ContractSpec, name: str | None = None
     return system.build().separation(part.build(), name).to_dict()
 
 
-# Checks ---------------------------------------------------------------------
+@tool
+def saturate(contract: ContractSpec, name: str | None = None) -> dict:
+    """Saturation: the equivalent contract (A, A -> G). The other operations
+    saturate their operands themselves."""
+    return contract.build().saturate(name).to_dict()
+
+
+@tool
+def simplify(contract: ContractSpec, timeout: float = 60,
+             backend: Backend = "auto") -> dict:
+    """Simplification: drop the assumptions implied by the other assumptions,
+    and the guarantees implied by the assumptions and the other guarantees.
+    Returns the simplified contract and the terms removed; terms whose check
+    did not finish are kept and listed in `unknown`."""
+    return chase_cps.simplify(contract.build(), backend, timeout=timeout).to_dict()
+
+
+# Contract operations that check contracts -----------------------------------
 
 @tool
 def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
@@ -198,23 +215,6 @@ def realizable(contract: ContractSpec, timeout: float = 300) -> dict:
 
 
 @tool
-def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 300,
-            backend: Backend = "auto") -> dict:
-    """Is the LTL formula phi -> psi valid? Returns valid, or invalid with a
-    counterexample trace satisfying phi and violating psi."""
-    return chase_cps.implies(phi, psi, _variables(variables), backend,
-                             timeout=timeout).to_dict()
-
-
-@tool
-def satisfiable(formula: str, variables: dict[str, VarType], timeout: float = 300,
-                backend: Backend = "auto") -> dict:
-    """Is the LTL formula satisfiable? sat with a witness trace, or unsat."""
-    return chase_cps.satisfiable(formula, _variables(variables), backend,
-                                 timeout=timeout).to_dict()
-
-
-@tool
 def contains_environment(contract: ContractSpec, environment: str, timeout: float = 300,
                          backend: Backend = "auto") -> dict:
     """Is the environment (an LTL formula over the variables of the contract)
@@ -232,12 +232,23 @@ def contains_implementation(contract: ContractSpec, implementation: str,
                                              timeout=timeout).to_dict()
 
 
+# LTL formulas ---------------------------------------------------------------
+
 @tool
-def remove_redundant(contract: ContractSpec, timeout: float = 60,
-                     backend: Backend = "auto") -> dict:
-    """Drop the assumptions implied by the other assumptions, and the
-    guarantees implied by the assumptions and the other guarantees."""
-    return chase_cps.remove_redundant(contract.build(), backend, timeout=timeout).to_dict()
+def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 300,
+            backend: Backend = "auto") -> dict:
+    """Is the LTL formula phi -> psi valid? Returns valid, or invalid with a
+    counterexample trace satisfying phi and violating psi."""
+    return chase_cps.implies(phi, psi, _variables(variables), backend,
+                             timeout=timeout).to_dict()
+
+
+@tool
+def satisfiable(formula: str, variables: dict[str, VarType], timeout: float = 300,
+                backend: Backend = "auto") -> dict:
+    """Is the LTL formula satisfiable? sat with a witness trace, or unsat."""
+    return chase_cps.satisfiable(formula, _variables(variables), backend,
+                                 timeout=timeout).to_dict()
 
 
 # Specifications in the CHASE language ---------------------------------------

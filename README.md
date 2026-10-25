@@ -11,7 +11,8 @@ the specification. The skill tells the agent how to use these tools.
 
 ## Tools
 
-Contract algebra (each tool returns a new contract):
+Contract operations that build contracts (each tool returns a new
+contract):
 
 - **compose**: parallel composition of two or more contracts; variables with
   the same name are connected.
@@ -19,9 +20,12 @@ Contract algebra (each tool returns a new contract):
 - **merge**: merging of viewpoints of the same component.
 - **quotient**: the contract of a missing component.
 - **separation**: the adjoint of merging.
+- **saturate**: the equivalent contract (A, A -> G).
+- **simplify**: removes the assumptions and guarantees implied by the other
+  terms of the contract.
 
-Checks (each tool returns a status and, when it fails, a counterexample
-trace):
+Contract operations that check contracts (each tool returns a status and,
+when the check fails, a counterexample):
 
 - **refines**: whether a contract refines another one, and which part fails
   (assumptions or guarantees).
@@ -29,13 +33,14 @@ trace):
 - **compatible**: whether some environment satisfies the assumptions.
 - **realizable**: GR(1) realizability, with the controller or the
   counter-strategy of the environment.
-- **implies** and **satisfiable**: validity of an implication and
-  satisfiability of an LTL formula.
 - **contains_environment** and **contains_implementation**: whether an
   environment or an implementation, given as LTL formulas, is accepted by the
   contract.
-- **remove_redundant**: removes the assumptions and guarantees implied by the
-  other terms of the contract.
+
+LTL formulas:
+
+- **implies** and **satisfiable**: validity of an implication and
+  satisfiability of a formula.
 
 Specifications:
 
@@ -134,8 +139,10 @@ the server entry (`environment` in OpenCode, `env = { ... }` in Codex).
 ## Skill
 
 The skill is in `skills/chase-contracts`. It follows the [Agent Skills][SKILLS]
-format (a `SKILL.md` file with instructions and examples), and it also works
-without the MCP server: the agent then uses the `chase_cps` Python package.
+format (a `SKILL.md` file with instructions), and it also works without the
+MCP server: the agent then uses the `chase_cps` Python package. The
+`examples` folder of the skill contains complete examples; each one is run by
+the tests, so the results they state are the ones CHASE returns.
 
 - Claude Code: installed with the plugin, or copy the folder to
   `~/.claude/skills/`.

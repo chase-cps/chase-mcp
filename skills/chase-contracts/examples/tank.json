@@ -1,0 +1,43 @@
+{
+  "title": "Water tank: from requirements to a realizable contract",
+  "shows": "Formalizing natural-language requirements, catching contradictory assumptions, simplifying, and why a consistent contract can still be unrealizable.",
+  "requirements": [
+    "R1. The tank is never low and full at the same time (environment).",
+    "R2. The tank does not stay full forever (environment).",
+    "R3. When the tank is low, the pump is on in the next step.",
+    "R4. The pump is never on when the tank is full."
+  ],
+  "contracts": {
+    "Tank": {"name": "Tank", "inputs": {"low": "bool", "full": "bool"}, "outputs": {"pump": "bool"},
+             "assumptions": ["G !(low & full)", "G F !full"],
+             "guarantees": ["G (low -> X pump)", "G (full -> !pump)"]},
+    "TankWrong": {"name": "TankWrong", "inputs": {"low": "bool", "full": "bool"}, "outputs": {"pump": "bool"},
+                  "assumptions": ["G !(low & full)", "G low", "F full"],
+                  "guarantees": ["G (low -> X pump)", "G (full -> !pump)"]},
+    "TankRedundant": {"name": "TankRedundant", "inputs": {"low": "bool", "full": "bool"}, "outputs": {"pump": "bool"},
+                      "assumptions": ["G !(low & full)", "G F !full", "F !full"],
+                      "guarantees": ["G (low -> X pump)", "G (full -> !pump)", "G (full & low -> !pump)"]},
+    "TankFixed": {"name": "Tank", "inputs": {"low": "bool", "full": "bool"}, "outputs": {"pump": "bool"},
+                  "assumptions": ["G !(low & full)", "G (low -> X !full)"],
+                  "guarantees": ["G (low -> X pump)", "G (full -> !pump)"]}
+  },
+  "steps": [
+    {"tool": "compatible", "args": {"contract": "$TankWrong"},
+     "expect": {"status": "unsat"},
+     "note": "R1 written with the extra assumptions 'always low' and 'eventually full' cannot hold together: no environment satisfies them, and every check on this contract would hold vacuously."},
+    {"tool": "compatible", "args": {"contract": "$Tank"},
+     "expect": {"status": "sat"}},
+    {"tool": "simplify", "args": {"contract": "$TankRedundant"},
+     "expect": {"removed_assumptions": ["F !full"], "removed_guarantees": ["G (full & low -> !pump)"]},
+     "note": "F !full follows from G F !full, and the third guarantee follows from G (full -> !pump)."},
+    {"tool": "consistent", "args": {"contract": "$Tank"},
+     "expect": {"status": "sat"},
+     "note": "Some behavior satisfies the contract, so it is consistent."},
+    {"tool": "realizable", "args": {"contract": "$Tank"},
+     "expect": {"status": "unrealizable"}, "needs": "slugs",
+     "note": "But no pump controller works for every environment. The counter-strategy: the environment makes the tank low, R3 forces the pump on, and then the environment makes the tank full, which violates R4. Consistency only says that some environment and some pump agree."},
+    {"tool": "realizable", "args": {"contract": "$TankFixed"},
+     "expect": {"status": "realizable"}, "needs": "slugs",
+     "note": "With the physical assumption that the tank cannot go from low to full in one step, the contract is realizable and the result contains a controller."}
+  ]
+}

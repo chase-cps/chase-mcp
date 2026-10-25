@@ -1,0 +1,36 @@
+{
+  "title": "Pipeline: composition, assumptions, quotient",
+  "shows": "Composing component contracts, fixing a failed refinement of the assumptions, guarding against vacuity, and computing the contract of a missing component.",
+  "contracts": {
+    "Sensor": {"name": "Sensor", "inputs": {"obstacle": "bool"}, "outputs": {"alarm": "bool"},
+               "guarantees": ["G (obstacle -> alarm)"]},
+    "Brake": {"name": "Brake", "inputs": {"alarm": "bool"}, "outputs": {"stop": "bool"},
+              "assumptions": ["G F !alarm"], "guarantees": ["G (alarm -> X stop)"]},
+    "Car": {"name": "Car", "inputs": {"obstacle": "bool"}, "outputs": {"stop": "bool"},
+            "assumptions": ["G F !obstacle"], "guarantees": ["G (obstacle -> X stop)"]},
+    "Sensor2": {"name": "Sensor", "inputs": {"obstacle": "bool"}, "outputs": {"alarm": "bool"},
+                "guarantees": ["G (alarm <-> obstacle)"]}
+  },
+  "steps": [
+    {"tool": "compose", "args": {"contracts": ["$Sensor", "$Brake"], "name": "System"},
+     "save": "System",
+     "note": "The contracts are connected through alarm, an output of Sensor and an input of Brake."},
+    {"tool": "refines", "args": {"refined": "$System", "abstract": "$Car"},
+     "expect": {"status": "invalid", "failed": "assumptions"},
+     "note": "Trace: the obstacle goes away, as Car assumes, but the alarm stays on forever, which breaks the assumption G F !alarm of Brake. The sensor guarantee is too weak."},
+    {"tool": "compose", "args": {"contracts": ["$Sensor2", "$Brake"], "name": "System"},
+     "save": "System2",
+     "note": "Fixed sensor: the alarm is on exactly when there is an obstacle."},
+    {"tool": "refines", "args": {"refined": "$System2", "abstract": "$Car"},
+     "expect": {"status": "valid"}},
+    {"tool": "compatible", "args": {"contract": "$System2"},
+     "expect": {"status": "sat"},
+     "note": "The assumptions of the composite can be satisfied: the refinement does not hold vacuously."},
+    {"tool": "quotient", "args": {"system": "$Car", "part": "$Sensor2", "name": "Missing"},
+     "save": "Missing",
+     "note": "The largest contract that, composed with the sensor, refines Car. Its output is stop; obstacle and alarm are inputs."},
+    {"tool": "refines", "args": {"refined": "$Brake", "abstract": "$Missing"},
+     "expect": {"status": "valid"},
+     "note": "Brake is a valid implementation of the missing component."}
+  ]
+}

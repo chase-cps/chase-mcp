@@ -42,7 +42,7 @@ def test_tools_are_listed():
     assert {"compose", "conjoin", "disjoin", "merge", "quotient", "separation",
             "refines", "consistent", "compatible", "realizable", "implies",
             "satisfiable", "contains_environment", "contains_implementation",
-            "remove_redundant", "read_spec", "write_spec"} == asyncio.run(run())
+            "saturate", "simplify", "read_spec", "write_spec"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -149,3 +149,15 @@ def test_native_output_does_not_reach_protocol():
                        timeout=60, env=dict(os.environ))
     assert p.stdout == "protocol\n"
     assert "INFO: native" in p.stderr
+
+
+def test_saturate_and_simplify():
+    err, s = call("saturate", {"contract": SPEC})
+    assert not err and s["guarantees"] == ["G F !req -> G (req -> F grant)"]
+    redundant = dict(SPEC, assumptions=["G F !req", "F !req"],
+                     guarantees=["G (req -> X grant)", "G (req -> F grant)"])
+    err, r = call("simplify", {"contract": redundant})
+    assert not err
+    assert r["removed_assumptions"] == ["F !req"]
+    assert r["removed_guarantees"] == ["G (req -> F grant)"]
+    assert r["contract"]["guarantees"] == ["G (req -> X grant)"]

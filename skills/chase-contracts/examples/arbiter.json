@@ -1,0 +1,20 @@
+{
+  "title": "Arbiter: refinement and counterexample",
+  "shows": "Checking that an implementation contract refines a specification, and reading the counterexample when it does not.",
+  "contracts": {
+    "Spec": {"name": "Spec", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+             "assumptions": ["G F !req"], "guarantees": ["G (req -> F grant)"]},
+    "Impl": {"name": "Impl", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+             "guarantees": ["G (req -> X grant)"]},
+    "Lazy": {"name": "Lazy", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+             "guarantees": ["G (req -> X X grant) | G !grant"]}
+  },
+  "steps": [
+    {"tool": "refines", "args": {"refined": "$Impl", "abstract": "$Spec"},
+     "expect": {"status": "valid"},
+     "note": "Granting in the next step is a way of granting eventually."},
+    {"tool": "refines", "args": {"refined": "$Lazy", "abstract": "$Spec"},
+     "expect": {"status": "invalid", "failed": "guarantees"},
+     "note": "Trace: req at step 0, then grant stays false in the loop. The disjunct G !grant allows a component that never grants; drop it."}
+  ]
+}
