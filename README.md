@@ -16,8 +16,9 @@ contract):
 
 - **compose**: parallel composition of two or more contracts; variables with
   the same name are connected.
-- **conjoin** and **disjoin**: greatest lower bound and least upper bound.
-- **merge**: merging of viewpoints of the same component.
+- **conjunction** and **disjunction**: greatest lower bound and least upper
+  bound.
+- **merging**: merging of viewpoints of the same component.
 - **quotient**: the contract of a missing component.
 - **separation**: the adjoint of merging.
 - **saturate**: the equivalent contract (A, A -> G).
@@ -29,11 +30,12 @@ contract):
 Contract operations that check contracts (each tool returns a status and,
 when the check fails, a counterexample):
 
-- **refines**: whether a contract refines another one, and which part fails
-  (assumptions or guarantees).
-- **consistent**: whether some behavior satisfies the contract.
-- **compatible**: whether some environment satisfies the assumptions.
-- **realizable**: GR(1) realizability, with the controller or the
+- **refinement**: whether a contract refines another one, and which part
+  fails (assumptions or guarantees).
+- **verify**: compatibility and consistency; **compatible** (some environment
+  satisfies the assumptions) and **consistent** (some behavior satisfies the
+  contract) check them one at a time.
+- **synthesize**: GR(1) realizability, with the controller or the
   counter-strategy of the environment.
 - **contains_environment** and **contains_implementation**: whether an
   environment or an implementation, given as LTL formulas, is accepted by the

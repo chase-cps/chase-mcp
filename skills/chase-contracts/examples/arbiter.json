@@ -10,10 +10,10 @@
              "guarantees": ["G (req -> X X grant) | G !grant"]}
   },
   "steps": [
-    {"tool": "refines", "args": {"refined": "$Impl", "abstract": "$Spec"},
+    {"tool": "refinement", "args": {"refined": "$Impl", "abstract": "$Spec"},
      "expect": {"status": "valid"},
      "note": "Granting in the next step is a way of granting eventually."},
-    {"tool": "refines", "args": {"refined": "$Lazy", "abstract": "$Spec"},
+    {"tool": "refinement", "args": {"refined": "$Lazy", "abstract": "$Spec"},
      "expect": {"status": "invalid", "failed": "guarantees"},
      "note": "Trace: req at step 0, then grant stays false in the loop. The disjunct G !grant allows a component that never grants; drop it."}
   ]

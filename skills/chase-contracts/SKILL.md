@@ -17,12 +17,13 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | MCP tool | Python |
 |---|---|
 | **Contract operations that build contracts** | |
-| `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
+| `compose`, `conjunction`, `disjunction`, `merging` | `c1.compose(c2)`, `c1.conjunction(c2)`, `c1.disjunction(c2)`, `c1.merging(c2)` |
 | `quotient`, `separation` | `system.quotient(part)`, `system.separation(part)` |
 | `saturate`, `simplify`, `remove_redundant` | `c.saturate()`, `c.simplify()`, `chase_cps.remove_redundant(c)` |
 | **Contract operations that check contracts** | |
-| `refines` | `chase_cps.refines(refined, abstract)` |
-| `consistent`, `compatible`, `realizable` | `chase_cps.consistent(c)`, `chase_cps.compatible(c)`, `chase_cps.realizable(c)` |
+| `refinement` | `chase_cps.refinement(refined, abstract)` |
+| `verify`, `compatible`, `consistent` | `chase_cps.verify(c)`, `chase_cps.compatible(c)`, `chase_cps.consistent(c)` |
+| `synthesize` | `chase_cps.synthesize(c)` |
 | `contains_environment`, `contains_implementation` | same names in `chase_cps` |
 | **LTL formulas** | |
 | `implies`, `satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.satisfiable(phi, variables)` |
@@ -75,14 +76,14 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 1. **Write the contracts.** One contract per component, and one for the whole
    system. Keep each requirement as a separate formula: the checks and
    `remove_redundant` work term by term.
-2. **Sanity checks.** Run `compatible` (some environment satisfies the
-   assumptions) and `consistent` (some behavior satisfies A -> G) on every
-   contract. An unsat result means contradictory assumptions or guarantees.
+2. **Sanity checks.** Run `verify` on every contract: it checks that the
+   contract is compatible (some environment satisfies the assumptions) and
+   consistent (some behavior satisfies A -> G). An unsat result means contradictory assumptions or guarantees.
    A consistent contract can still be unrealizable: consistency only says
-   that some environment and some component agree. Use `realizable` when the
+   that some environment and some component agree. Use `synthesize` when the
    question is whether a component can be built.
 3. **Compose and refine.** Compose the component contracts and check that the
-   result `refines` the system contract.
+   result refines the system contract (`refinement`).
 4. **Read the result.**
    - `valid`: the components meet the system contract. Check that the
      composite is still `compatible`: assumptions that cannot be satisfied
@@ -97,11 +98,11 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
      use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges.
 5. **Missing components.** `quotient(system, part)` gives the contract of the
    component still to design: the largest contract that, composed with
-   `part`, refines `system`. `realizable` tells whether it can be implemented,
+   `part`, refines `system`. `synthesize` tells whether it can be implemented,
    and gives a controller or a counter-strategy of the environment.
-6. **Viewpoints.** Use `merge` for different aspects of the same component
+6. **Viewpoints.** Use `merging` for different aspects of the same component
    (function, timing, safety), and `separation` to remove a viewpoint.
-   Use `conjoin` when several specifications must hold at once.
+   Use `conjunction` when several specifications must hold at once.
 7. **Clean up.** `remove_redundant` drops the terms implied by the others;
    `simplify` rewrites the formulas into a shorter equivalent form.
    `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
@@ -119,7 +120,7 @@ assumptions.
 
 ## Realizability
 
-`realizable` uses slugs and needs formulas in the GR(1) fragment: initial
+`synthesize` uses slugs and needs formulas in the GR(1) fragment: initial
 conditions without temporal operators, safety `G (...)` over the current
 and next values (`x'`), and liveness `G F (...)`. When a contract is not in
 this form the result is `unknown` with the reason; rewrite the formulas, or

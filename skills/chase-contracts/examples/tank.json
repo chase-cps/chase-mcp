@@ -33,10 +33,10 @@
     {"tool": "consistent", "args": {"contract": "$Tank"},
      "expect": {"status": "sat"},
      "note": "Some behavior satisfies the contract, so it is consistent."},
-    {"tool": "realizable", "args": {"contract": "$Tank"},
+    {"tool": "synthesize", "args": {"contract": "$Tank"},
      "expect": {"status": "unrealizable"}, "needs": "slugs",
      "note": "But no pump controller works for every environment. The counter-strategy: the environment makes the tank low, R3 forces the pump on, and then the environment makes the tank full, which violates R4. Consistency only says that some environment and some pump agree."},
-    {"tool": "realizable", "args": {"contract": "$TankFixed"},
+    {"tool": "synthesize", "args": {"contract": "$TankFixed"},
      "expect": {"status": "realizable"}, "needs": "slugs",
      "note": "With the physical assumption that the tank cannot go from low to full in one step, the contract is realizable and the result contains a controller."}
   ]

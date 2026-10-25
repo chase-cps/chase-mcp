@@ -8,7 +8,7 @@
                "guarantees": ["G (X grant -> req)"]}
   },
   "steps": [
-    {"tool": "merge", "args": {"contracts": ["$Function", "$Timing"], "name": "Arbiter"},
+    {"tool": "merging", "args": {"contracts": ["$Function", "$Timing"], "name": "Arbiter"},
      "save": "Arbiter",
      "note": "Both viewpoints describe the same component, so they are merged, not composed."},
     {"tool": "contains_implementation",
@@ -22,9 +22,9 @@
     {"tool": "separation", "args": {"system": "$Arbiter", "part": "$Timing", "name": "Rest"},
      "save": "Rest",
      "note": "The smallest contract that, merged with Timing, gives back a contract refined by Arbiter."},
-    {"tool": "merge", "args": {"contracts": ["$Timing", "$Rest"]},
+    {"tool": "merging", "args": {"contracts": ["$Timing", "$Rest"]},
      "save": "Back"},
-    {"tool": "refines", "args": {"refined": "$Arbiter", "abstract": "$Back"},
+    {"tool": "refinement", "args": {"refined": "$Arbiter", "abstract": "$Back"},
      "expect": {"status": "valid"}}
   ]
 }

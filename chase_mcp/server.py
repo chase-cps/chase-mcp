@@ -123,24 +123,24 @@ def compose(contracts: list[ContractSpec], name: str | None = None) -> dict:
 
 
 @tool
-def conjoin(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def conjunction(contracts: list[ContractSpec], name: str | None = None) -> dict:
     """Conjunction (greatest lower bound) of two or more contracts: a contract
     that refines all of them, (A1 | A2, G1 & G2)."""
-    return _fold(contracts, "conjoin", name)
+    return _fold(contracts, "conjunction", name)
 
 
 @tool
-def disjoin(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def disjunction(contracts: list[ContractSpec], name: str | None = None) -> dict:
     """Disjunction (least upper bound) of two or more contracts: a contract
     refined by all of them, (A1 & A2, G1 | G2)."""
-    return _fold(contracts, "disjoin", name)
+    return _fold(contracts, "disjunction", name)
 
 
 @tool
-def merge(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def merging(contracts: list[ContractSpec], name: str | None = None) -> dict:
     """Merging of two or more viewpoints of the same component (e.g. function
     and timing): (A1 & A2, (G1 & G2) | !(A1 & A2))."""
-    return _fold(contracts, "merge", name)
+    return _fold(contracts, "merging", name)
 
 
 @tool
@@ -186,14 +186,23 @@ def remove_redundant(contract: ContractSpec, timeout: float = 60,
 # Contract operations that check contracts -----------------------------------
 
 @tool
-def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
+def refinement(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
             backend: Backend = "auto") -> dict:
     """Does `refined` refine `abstract` (can it replace it)? Checks that the
     assumptions of `abstract` imply those of `refined`, and that the
     guarantees of `refined` imply those of `abstract`. status is valid,
     invalid (with `failed` and a counterexample trace), or unknown."""
-    return chase_cps.refines(refined.build(), abstract.build(), backend,
+    return chase_cps.refinement(refined.build(), abstract.build(), backend,
                              timeout=timeout).to_dict()
+
+
+@tool
+def verify(contract: ContractSpec, timeout: float = 300,
+           backend: Backend = "auto") -> dict:
+    """Compatibility and consistency of the contract (the verify command of
+    logics_tool): status is sat when both hold; the results of the two checks
+    are in compatible and consistent."""
+    return chase_cps.verify(contract.build(), backend, timeout=timeout).to_dict()
 
 
 @tool
@@ -215,12 +224,12 @@ def compatible(contract: ContractSpec, timeout: float = 300,
 
 
 @tool
-def realizable(contract: ContractSpec, timeout: float = 300) -> dict:
+def synthesize(contract: ContractSpec, timeout: float = 300) -> dict:
     """GR(1) realizability with slugs: can a component choose its outputs so
     that the guarantees hold for every environment satisfying the
     assumptions? Returns the controller, or the counter-strategy of the
     environment. Needs slugs; the formulas must be in the GR(1) fragment."""
-    return chase_cps.realizable(contract.build(), timeout=timeout).to_dict()
+    return chase_cps.synthesize(contract.build(), timeout=timeout).to_dict()
 
 
 @tool

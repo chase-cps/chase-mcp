@@ -39,17 +39,17 @@ def test_tools_are_listed():
     async def run():
         async with Client(server) as client:
             return {t.name for t in (await client.list_tools()).tools}
-    assert {"compose", "conjoin", "disjoin", "merge", "quotient", "separation",
-            "refines", "consistent", "compatible", "realizable", "implies",
+    assert {"compose", "conjunction", "disjunction", "merging", "quotient", "separation",
+            "refinement", "verify", "consistent", "compatible", "synthesize", "implies",
             "satisfiable", "contains_environment", "contains_implementation",
             "saturate", "simplify", "remove_redundant", "read_spec",
             "write_spec"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
-    err, r = call("refines", {"refined": IMPL, "abstract": SPEC})
+    err, r = call("refinement", {"refined": IMPL, "abstract": SPEC})
     assert not err and r["status"] == "valid"
-    err, r = call("refines", {"refined": SPEC, "abstract": IMPL})
+    err, r = call("refinement", {"refined": SPEC, "abstract": IMPL})
     assert not err and r["status"] == "invalid" and r["failed"] == "assumptions"
     assert r["assumptions"]["trace"]["loop"]
 
@@ -63,13 +63,15 @@ def test_compose_then_refine():
            "assumptions": ["G a"], "guarantees": ["G c"]}
     err, comp = call("compose", {"contracts": [c1, c2], "name": "Sys"})
     assert not err and comp["name"] == "Sys" and "b" in comp["outputs"]
-    err, r = call("refines", {"refined": comp, "abstract": top})
+    err, r = call("refinement", {"refined": comp, "abstract": top})
     assert not err and r["status"] == "valid"
 
 
 def test_consistency_compatibility_and_implies():
     err, r = call("consistent", {"contract": SPEC})
     assert not err and r["status"] == "sat"
+    err, r = call("verify", {"contract": SPEC})
+    assert not err and r["status"] == "sat" and r["compatible"]["status"] == "sat"
     contradictory = dict(SPEC, assumptions=["G req", "F !req"])
     err, r = call("compatible", {"contract": contradictory})
     assert not err and r["status"] == "unsat"
@@ -80,7 +82,7 @@ def test_consistency_compatibility_and_implies():
 
 def test_errors_are_reported_not_fatal():
     bad = dict(SPEC, guarantees=["G (req -> F"])
-    err, text = call("refines", {"refined": bad, "abstract": SPEC})
+    err, text = call("refinement", {"refined": bad, "abstract": SPEC})
     assert err and "syntax error" in text
     # The server is still usable after an error.
     err, r = call("compatible", {"contract": SPEC})
@@ -90,7 +92,7 @@ def test_errors_are_reported_not_fatal():
 def test_stdio_server():
     params = StdioServerParameters(command=sys.executable, args=["-m", "chase_mcp"],
                                     env=dict(os.environ))
-    err, r = call("refines", {"refined": IMPL, "abstract": SPEC}, target=params)
+    err, r = call("refinement", {"refined": IMPL, "abstract": SPEC}, target=params)
     assert not err and r["status"] == "valid"
     # The CHASE libraries print messages while parsing: they must not reach
     # the standard output, which carries the protocol.
@@ -102,13 +104,13 @@ def test_stdio_server():
 
 
 def test_algebra_bounds():
-    err, meet = call("conjoin", {"contracts": [SPEC, IMPL]})
+    err, meet = call("conjunction", {"contracts": [SPEC, IMPL]})
     assert not err
-    err, join = call("disjoin", {"contracts": [SPEC, IMPL]})
+    err, join = call("disjunction", {"contracts": [SPEC, IMPL]})
     assert not err
     for c in (SPEC, IMPL):
-        assert call("refines", {"refined": meet, "abstract": c})[1]["status"] == "valid"
-        assert call("refines", {"refined": c, "abstract": join})[1]["status"] == "valid"
+        assert call("refinement", {"refined": meet, "abstract": c})[1]["status"] == "valid"
+        assert call("refinement", {"refined": c, "abstract": join})[1]["status"] == "valid"
 
 
 def test_quotient_with_part_refines_system():
@@ -120,7 +122,7 @@ def test_quotient_with_part_refines_system():
     assert not err and "b" in q["outputs"]
     err, comp = call("compose", {"contracts": [part, q]})
     assert not err
-    assert call("refines", {"refined": comp, "abstract": system})[1]["status"] == "valid"
+    assert call("refinement", {"refined": comp, "abstract": system})[1]["status"] == "valid"
 
 
 def test_implementation_and_environment():
