@@ -4,9 +4,9 @@ results they state."""
 import glob
 import json
 import os
-import shutil
 
 import pytest
+from chase_cps.tools import find
 
 from test_server import call, pytestmark  # noqa: F401 (skip without a model checker)
 
@@ -32,7 +32,7 @@ def test_example(path):
     if "spec" in example:
         env["spec"] = example["spec"]
     for step in example["steps"]:
-        if step.get("needs") and not shutil.which(step["needs"]):
+        if step.get("needs") and not find(step["needs"]):
             continue
         err, result = call(step["tool"], resolve(step["args"], env))
         assert not err, f'{step["tool"]}: {result}'

@@ -3,16 +3,16 @@
 import asyncio
 import json
 import os
-import shutil
 import sys
 
 import pytest
+from chase_cps.backends import ADAPTERS
 from mcp import Client, StdioServerParameters
 
 from chase_mcp.server import server
 
 pytestmark = pytest.mark.skipif(
-    not (shutil.which("nuXmv") or shutil.which("NuSMV")),
+    not (ADAPTERS["nuxmv"].available() or ADAPTERS["nusmv"].available()),
     reason="nuXmv/NuSMV not installed")
 
 SPEC = {"name": "Spec", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},

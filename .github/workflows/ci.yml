@@ -16,17 +16,19 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install NuSMV
-        run: |
-          curl -fsSL -o nusmv.tgz https://nusmv.fbk.eu/distrib/NuSMV-2.6.0-linux64.tar.gz
-          echo "11b12e42bc04566c4ec1f7cc205fa8704382ac4d69e052154cbb59c9b7e8e08c  nusmv.tgz" | sha256sum -c -
-          tar xzf nusmv.tgz
-          echo "$PWD/NuSMV-2.6.0-Linux/bin" >> "$GITHUB_PATH"
-
       - name: Install chase-cps from source
         run: |
           sudo apt-get update && sudo apt-get install -y uuid-dev
           pip install "chase-cps @ git+https://github.com/chase-cps/chase@master"
+
+      - name: Cache the back ends
+        uses: actions/cache@v4
+        with:
+          path: ~/.chase
+          key: chase-tools-nusmv-2.6.0
+
+      - name: Install NuSMV with chase-cps install
+        run: test -x ~/.chase/bin/NuSMV || chase-cps install nusmv
 
       - name: Install and test
         run: |
