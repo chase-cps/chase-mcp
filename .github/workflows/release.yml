@@ -1,7 +1,8 @@
 name: Release
 
 # Builds the chase-mcp package.
-# - Manual run: the package is uploaded to TestPyPI.
+# - Manual run: the package is uploaded to TestPyPI, with the version
+#   X.Y.Z.devN (N is the number of the run), so that each run can be uploaded.
 # - Tag v*: the package is uploaded to PyPI.
 # Both use trusted publishing: the PyPI (and TestPyPI) project must list this
 # repository, this workflow (release.yml), and the environment (pypi, testpypi).
@@ -26,6 +27,20 @@ jobs:
         run: |
           version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
           test "${GITHUB_REF_NAME#v}" = "$version"
+          grep -q "__version__ = \"$version\"" chase_mcp/__init__.py
+
+      - name: Use a development version on TestPyPI
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          python3 - "pyproject.toml chase_mcp/__init__.py" "${{ github.run_number }}" <<'PY'
+          import re, sys
+          files, run = sys.argv[1].split(), sys.argv[2]
+          for f in files:
+              s = open(f).read()
+              s = re.sub(r'^(version|__version__) = "([^"]+)"', rf'\1 = "\2.dev{run}"', s, flags=re.M)
+              open(f, "w").write(s)
+          PY
 
       - name: Build
         run: |
