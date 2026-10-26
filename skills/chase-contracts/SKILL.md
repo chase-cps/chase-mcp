@@ -58,8 +58,15 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
 ```
 
 - Inputs are controlled by the environment, outputs by the component.
-  Variables are `"bool"` or bounded integers `[low, high]`; keep the ranges
-  small, the checks get slower with large ranges.
+  Variables are `"bool"`, bounded integers `[low, high]`, or `"real"`; keep
+  the integer ranges small, the checks get slower with large ranges.
+- Real variables: when they are only compared with constants
+  (`kias > 40`), every check works, synthesis too, and the result says
+  `reals: "regions"`. With arithmetic between them (`ia - ib > T`) the model
+  checker checks them (`reals: "smt"`, nuXmv only), but realizability and
+  synthesis are unknown. With nonlinear arithmetic (`x * y`) the answer may
+  be unknown; with `reals: "predicates"` a valid or unsat answer holds, and
+  the others come with the reason.
 - Assumptions are what the component expects of its environment; guarantees
   are what it promises when the assumptions hold. Both lists are read as
   conjunctions.
@@ -72,7 +79,8 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
 ## Formulas
 
 `! & | -> <->`, `G F X U R W`, `true false`, relations `= != < <= > >=`,
-arithmetic `+ - * /`, and `x'` for the value of `x` in the next step.
+arithmetic `+ - * /`, numbers such as `20.5`, and `x'` for the value of `x`
+in the next step.
 Unary operators bind tighter than binary ones: `G a -> b` means
 `(G a) -> b`; write `G (a -> b)`.
 

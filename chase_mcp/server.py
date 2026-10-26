@@ -8,9 +8,10 @@ A contract is given as JSON::
      "assumptions": ["G F !req"],
      "guarantees": ["G (req -> F grant)"]}
 
-Variables are Boolean ("bool") or bounded integers [low, high]. Formulas use
-the standard LTL syntax: ! & | -> <-> G F X U R W, relations (= != < <= > >=),
-arithmetic (+ - * /), and x' for the value of x in the next step.
+Variables are Boolean ("bool"), bounded integers [low, high], or reals
+("real"). Formulas use the standard LTL syntax: ! & | -> <-> G F X U R W,
+relations (= != < <= > >=), arithmetic (+ - * /), numbers such as 20.5, and
+x' for the value of x in the next step.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-VarType = Union[Literal["bool"], tuple[int, int]]
+VarType = Union[Literal["bool", "real"], tuple[int, int]]
 Backend = Literal["auto", "nuxmv", "nusmv"]
 
 
@@ -36,9 +37,9 @@ class ContractSpec(BaseModel):
     """An assume-guarantee contract over LTL."""
     name: str = Field("C", description="Contract name (letters, digits, _)")
     inputs: dict[str, VarType] = Field(default_factory=dict,
-                                       description='Input variables: "bool" or [low, high]')
+                                       description='Input variables: "bool", [low, high], or "real"')
     outputs: dict[str, VarType] = Field(default_factory=dict,
-                                        description='Output variables: "bool" or [low, high]')
+                                        description='Output variables: "bool", [low, high], or "real"')
     assumptions: list[str] = Field(default_factory=list,
                                    description="LTL formulas, read as a conjunction")
     guarantees: list[str] = Field(default_factory=list,
@@ -98,7 +99,7 @@ def tool(fn):
 
 
 def _variables(variables: dict[str, VarType]) -> dict:
-    return {k: ("bool" if v == "bool" else tuple(v)) for k, v in variables.items()}
+    return {k: (v if v in ("bool", "real") else tuple(v)) for k, v in variables.items()}
 
 
 def _fold(contracts: list[ContractSpec], operation: str, name: str | None) -> dict:

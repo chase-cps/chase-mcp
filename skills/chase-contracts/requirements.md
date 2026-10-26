@@ -20,9 +20,12 @@ List every signal the requirements talk about, in a table:
   this is not clear from the requirements; it decides whether a requirement
   is an assumption or a guarantee.
 - Use `bool` when the requirements only test a condition ("the battery is
-  low"). Use a bounded integer only when they compare or count, and always
-  give the range: an integer without a range is 0..16 in the CHASE language.
-  Keep the ranges small.
+  low"). Use a bounded integer when they count or compare discrete values
+  (a mode, a number of robots), and always give the range: an integer
+  without a range is 0..16 in the CHASE language. Keep the ranges small.
+- Use `real` for physical quantities (a speed, a pressure) compared with
+  thresholds. Compare them with constants where the requirement allows it
+  (`kias > 40` rather than `kias > limit`): then synthesis works too.
 - Use the names of the user, made valid (no spaces, not a keyword such as
   `G`, `F`, `X`, `P`).
 

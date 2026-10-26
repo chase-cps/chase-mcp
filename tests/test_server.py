@@ -228,3 +228,16 @@ def test_remove_vacuous():
     assert not err and r["contract"]["guarantees"] == ["G (req -> grant)"]
     assert r["removed"] == [{"term": "G F grant", "part": "guarantee", "kind": "justice",
                              "core": ["G F req", "G (req -> grant)"]}]
+
+
+def test_real_variables():
+    mode = {"name": "Mode", "inputs": {"kias": "real"}, "outputs": {"wing": "bool"},
+            "guarantees": ["G (kias > 40 -> X wing)", "G (kias <= 30.5 -> X !wing)"]}
+    spec = {"name": "Spec", "inputs": {"kias": "real"}, "outputs": {"wing": "bool"},
+            "guarantees": ["G (kias > 45 -> X wing)"]}
+    err, r = call("refines", {"refined": mode, "abstract": spec})
+    assert not err and (r["status"], r["reals"]) == ("valid", "regions")
+    err, r = call("refines", {"refined": spec, "abstract": mode})
+    assert not err and r["status"] == "invalid"
+    trace = r["guarantees"]["trace"]
+    assert all(isinstance(s["kias"], (int, float, str)) for s in trace["prefix"] + trace["loop"])
