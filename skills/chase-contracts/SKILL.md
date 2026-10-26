@@ -1,6 +1,6 @@
 ---
 name: chase-contracts
-description: Write, check, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that a set of component contracts refines a system contract, find the contract of a missing component (quotient), merge viewpoints, check consistency, compatibility, or GR(1) realizability, simplify, saturate, or remove redundant terms of a contract, or explain a counterexample from these checks.
+description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, or well-separation, find which terms cause a failure (unsat or unrealizable core), remove redundant or vacuous terms, synthesize a controller, or explain a counterexample from these checks.
 ---
 
 # Assume-guarantee contracts with CHASE
@@ -21,21 +21,25 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | `divide` (quotient), `separate` | `system.divide(part)`, `system.separate(part)` |
 | `imply`, `coimply`, `invert` | `c1.imply(c2)`, `c1.coimply(c2)`, `c.invert()` |
 | `assume`, `ensure` | `c.assume("G F req")`, `c.ensure("G (grant -> X !grant)")` |
-| `saturate`, `simplify`, `remove_redundant` | `c.saturate()`, `c.simplify()`, `chase_cps.remove_redundant(c)` |
+| `saturate`, `simplify` | `c.saturate()`, `c.simplify()` |
+| `remove_redundant`, `remove_vacuous` | `chase_cps.remove_redundant(c)`, `chase_cps.remove_vacuous(c)` |
 | **Contract operations that check contracts** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
 | `verify`, `is_compatible`, `is_consistent` | `chase_cps.verify(c)`, `chase_cps.is_compatible(c)`, `chase_cps.is_consistent(c)` |
-| `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
+| `is_realizable`, `synthesize`, `is_well_separated` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)`, `chase_cps.is_well_separated(c)` |
 | `accepts`, `implements` | `chase_cps.accepts(c, environment)`, `chase_cps.implements(implementation, c)` |
-| `unrealizable_core`, `unsat_core` | `chase_cps.unrealizable_core(c)`, `chase_cps.unsat_core(c)` |
-| `is_well_separated`, `remove_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.remove_vacuous(c)` |
+| **Explanations of a failed check** | |
+| `unsat_core`, `unrealizable_core` | `chase_cps.unsat_core(c)`, `chase_cps.unrealizable_core(c)`; or `core=True` on the checks |
 | **LTL formulas** | |
 | `implies`, `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
 | **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 
 The operations that build contracts return a new contract. The checks return
-a status and, when they fail, a counterexample.
+a status and, when they fail, a counterexample. With `core: true`,
+`is_realizable`, `is_compatible`, `is_consistent`, `is_satisfiable`, and
+`is_well_separated` also return a core: the few terms that cause the
+failure.
 
 In Python a contract is built with
 `Contract.from_dict(d)` or `Contract.from_strings(inputs=..., outputs=..., assumptions=..., guarantees=..., name=...)`.
@@ -89,17 +93,15 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
    pass `core: true` (or call `unsat_core` / `unrealizable_core`) to get the
    few terms that cause it, and show those to the user rather than the whole
    contract. `unsat_core` of a contract also finds guarantees that cannot
-   hold when the assumptions do, which `verify` does not report. Before
-   synthesis, check `is_well_separated`: a realizable contract that is not
-   well-separated lets the controller win by breaking its environment; weaken
-   the assumptions given in the core, or make them independent of the
-   outputs.
+   hold when the assumptions do, which `verify` does not report.
 3. **Compose and refine.** Compose the component contracts and check that the
    result refines the system contract (`refines`). With `discharge`, the
    composite keeps the terms of the components, which is easier to read and
-   often faster to check; it is an abstraction of the composition, so a
-   `valid` refinement holds, but an `invalid` one must be confirmed on the
-   composition without `discharge`.
+   often faster to check, and the assumptions of a component that another
+   component guarantees are dropped, also when the components feed each
+   other (in one direction only). It is an abstraction of the composition,
+   so a `valid` refinement holds, but an `invalid` one must be confirmed on
+   the composition without `discharge`.
 4. **Read the result.**
    - `valid`: the components meet the system contract. Check that the
      composite is still compatible (`is_compatible`): assumptions that cannot
@@ -117,10 +119,25 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
    composed with `part`, refines `system`. `is_realizable` tells whether it
    can be implemented (or gives a counter-strategy of the environment), and
    `synthesize` builds the controller.
-6. **Viewpoints.** Use `merge` for different aspects of the same component
+6. **Before synthesis.** For each component to synthesize:
+   - `is_realizable` with `core: true`: if unrealizable, the core names the
+     guarantees that conflict, and the counter-strategy shows how the
+     environment wins; weaken one of them or add the assumption that is
+     missing.
+   - `is_well_separated` (with `with_guarantees: true` to keep the safety
+     guarantees): if not separated, the controller can satisfy the contract
+     by forcing the environment to break its assumptions instead of serving
+     it. Weaken the assumptions in the core, or make them depend less on the
+     outputs (e.g. "after a grant of the request" rather than "after any
+     grant").
+   - `remove_vacuous`: drops the terms that do not change the synthesis
+     problem; report them, they often show a misunderstanding.
+   - `synthesize` builds the controller.
+7. **Viewpoints.** Use `merge` for different aspects of the same component
    (function, timing, safety), and `separate` to remove a viewpoint.
    Use `conjoin` when several specifications must hold at once.
-7. **Clean up.** `remove_redundant` drops the terms implied by the others;
+8. **Clean up.** `remove_redundant` drops the terms implied by the others
+   (keeping A -> G); `remove_vacuous` keeps realizability instead;
    `simplify` rewrites the formulas into a shorter equivalent form.
    `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
    user the behaviors a contract allows; the other operations saturate their
@@ -137,11 +154,17 @@ assumptions.
 
 ## Realizability
 
-`is_realizable` and `synthesize` use slugs and need formulas in the GR(1) fragment: initial
-conditions without temporal operators, safety `G (...)` over the current
-and next values (`x'`), and liveness `G F (...)`. When a contract is not in
-this form the result is `unknown` with the reason; rewrite the formulas, or
-use the model checker based tools instead.
+`is_realizable`, `synthesize`, `is_well_separated`, `unrealizable_core`, and
+`remove_vacuous` need formulas in the GR(1) fragment: initial conditions
+without temporal operators, safety `G (...)` over the current and next
+values (`x'` or `X x`), and liveness `G F (...)`. In addition, the initial
+assumptions can only read inputs, and the safety assumptions can only read
+the next value of inputs: the environment cannot depend on what the
+component does next. A pattern such as `G (req -> F grant)` is not GR(1);
+`G F (grant | !req)` often says what is meant. When a contract is not in
+this form the result is `unknown` with the reason, naming the term; rewrite
+it, or use the model checker based tools instead. Temporal operators apply
+to formulas: write `x'`, not `X x`, inside a comparison or arithmetic.
 
 ## Examples
 
@@ -159,3 +182,8 @@ explains it. Read the one closest to the task before starting:
   separation.
 - `chase-spec.json`: reading and writing specifications in the CHASE
   language.
+- `charger.json`: two robots and an arbiter; an unrealizable core, a
+  contract that is not well-separated, vacuous terms, and the composition of
+  components that feed each other.
+- `algebra.json`: implication, reciprocal and quotient, adding assumptions
+  or guarantees, and an unsat core of assumptions and guarantees.

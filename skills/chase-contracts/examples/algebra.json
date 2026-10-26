@@ -1,0 +1,43 @@
+{
+  "title": "Contract algebra: adjoints, reciprocal, and unsat cores",
+  "shows": "Implication as the adjoint of conjunction, the reciprocal and the quotient as merging with it, adding an assumption or a guarantee, and an unsat core that verify does not report: guarantees that cannot hold when the assumptions do.",
+  "contracts": {
+    "Station": {"name": "Station", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+                "assumptions": ["G F !req"], "guarantees": ["G (req -> F grant)"]},
+    "Fast": {"name": "Fast", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+             "assumptions": ["G F !req"], "guarantees": ["G (req -> X grant)"]},
+    "Busy": {"name": "Busy", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+             "assumptions": ["G req"], "guarantees": ["G (req -> X !req)", "G grant"]}
+  },
+  "steps": [
+    {"tool": "imply", "args": {"premise": "$Fast", "conclusion": "$Station"}, "save": "Missing",
+     "note": "Missing is the largest contract that, conjoined with Fast, refines Station: what is still needed besides Fast."},
+    {"tool": "conjoin", "args": {"contracts": ["$Missing", "$Fast"]}, "save": "Both"},
+    {"tool": "refines", "args": {"refined": "$Both", "abstract": "$Station"},
+     "expect": {"status": "valid"}},
+    {"tool": "invert", "args": {"contract": "$Fast"}, "save": "FastInv",
+     "expect": {"inputs": {"grant": "bool"}, "outputs": {"req": "bool"}},
+     "note": "The reciprocal (G, A) is the contract seen from the environment: inputs and outputs exchanged."},
+    {"tool": "divide", "args": {"system": "$Station", "part": "$Fast"}, "save": "Quotient"},
+    {"tool": "merge", "args": {"contracts": ["$Station", "$FastInv"]}, "save": "Merged"},
+    {"tool": "refines", "args": {"refined": "$Quotient", "abstract": "$Merged"},
+     "expect": {"status": "valid"}},
+    {"tool": "refines", "args": {"refined": "$Merged", "abstract": "$Quotient"},
+     "expect": {"status": "valid"},
+     "note": "The quotient C / C' equals C merged with the reciprocal of C' (Incer et al., arXiv 2309.08875)."},
+    {"tool": "assume", "args": {"contract": "$Station", "formula": "G F req"}, "save": "Assumed"},
+    {"tool": "refines", "args": {"refined": "$Station", "abstract": "$Assumed"},
+     "expect": {"status": "valid"},
+     "note": "Adding an assumption gives an abstraction of the contract."},
+    {"tool": "ensure", "args": {"contract": "$Station", "formula": "G (grant -> X !grant)"}, "save": "Ensured"},
+    {"tool": "refines", "args": {"refined": "$Ensured", "abstract": "$Station"},
+     "expect": {"status": "valid"},
+     "note": "Adding a guarantee gives a refinement of the contract."},
+    {"tool": "verify", "args": {"contract": "$Busy"},
+     "expect": {"status": "sat"},
+     "note": "Busy is compatible and consistent: some environment satisfies G req, and A -> G holds when the environment breaks it."},
+    {"tool": "unsat_core", "args": {"contract": "$Busy"},
+     "expect": {"status": "found"},
+     "note": "The core is the assumption G req and the guarantee G (req -> X !req): whenever the environment keeps its promise, the component cannot keep this guarantee. G grant is not in the core."}
+  ]
+}
