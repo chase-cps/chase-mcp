@@ -18,17 +18,19 @@ jobs:
 
       - name: Install chase-cps from source
         run: |
-          sudo apt-get update && sudo apt-get install -y uuid-dev libxml2 libedit2
+          sudo apt-get update && sudo apt-get install -y uuid-dev libxml2 libedit2 libboost-dev
           pip install "chase-cps @ git+https://github.com/chase-cps/chase@master"
 
       - name: Cache the back ends
         uses: actions/cache@v4
         with:
           path: ~/.chase
-          key: chase-tools-nuxmv-2.2.0
+          key: chase-tools-nuxmv-2.2.0-slugs
 
-      - name: Install nuXmv with chase-cps install
-        run: test -x ~/.chase/bin/nuXmv || chase-cps install nuxmv --accept-license
+      - name: Install nuXmv and slugs with chase-cps install
+        run: |
+          test -x ~/.chase/bin/nuXmv || chase-cps install nuxmv --accept-license
+          test -e ~/.chase/bin/slugs || chase-cps install slugs
 
       - name: Install and test
         run: |
