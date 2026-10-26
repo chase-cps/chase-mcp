@@ -198,3 +198,6 @@ explains it. Read the one closest to the task before starting:
   components that feed each other.
 - `algebra.json`: implication, reciprocal and quotient, adding assumptions
   or guarantees, and an unsat core of assumptions and guarantees.
+- `airspeed.json`: requirements with a real variable compared at two steps,
+  checked with the SMT engine of nuXmv; the requirements in conflict and a
+  behavior with real values.

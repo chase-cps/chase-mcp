@@ -1,0 +1,70 @@
+{
+ "title": "Airspeed: requirements with a real variable",
+ "shows": "Real variables checked with the SMT engine of nuXmv: a set of requirements that cannot hold together because the airspeed changes slowly, the requirements in conflict, and the fixed set with a behavior. A reduced form of the Lift-Plus-Cruise case study of FRET (demos repository, LiftPlusCruise).",
+ "requirements": [
+  "R1. The airspeed kias is 120 at the start.",
+  "R2. The airspeed changes by 10 at most at each step.",
+  "R3. The vehicle hovers only when kias is 30 or less.",
+  "R4. The airspeed is never negative.",
+  "R5. The vehicle hovers within 6 steps (R5b: within 10 steps)."
+ ],
+ "contracts": {
+  "Slow": {
+   "name": "Slow",
+   "inputs": {},
+   "outputs": {
+    "kias": "real",
+    "hover": "bool"
+   },
+   "assumptions": [],
+   "guarantees": [
+    "kias = 120",
+    "G (kias' - kias <= 10 & kias - kias' <= 10)",
+    "G (kias > 30 -> !hover)",
+    "G (kias >= 0)",
+    "hover | X hover | X X hover | X X X hover | X X X X hover | X X X X X hover | X X X X X X hover"
+   ]
+  },
+  "Patient": {
+   "name": "Patient",
+   "inputs": {},
+   "outputs": {
+    "kias": "real",
+    "hover": "bool"
+   },
+   "assumptions": [],
+   "guarantees": [
+    "kias = 120",
+    "G (kias' - kias <= 10 & kias - kias' <= 10)",
+    "G (kias > 30 -> !hover)",
+    "G (kias >= 0)",
+    "hover | X hover | X X hover | X X X hover | X X X X hover | X X X X X hover | X X X X X X hover | X X X X X X X hover | X X X X X X X X hover | X X X X X X X X X hover | X X X X X X X X X X hover"
+   ]
+  }
+ },
+ "steps": [
+  {
+   "tool": "is_consistent",
+   "args": {
+    "contract": "$Slow",
+    "core": true
+   },
+   "expect": {
+    "status": "unsat",
+    "reals": "smt"
+   },
+   "note": "kias' is the value at the next step, so R2 compares kias at two steps: the exact regions do not apply and nuXmv checks it with its SMT engine (reals is smt). From 120, kias needs 9 steps to reach 30, so the vehicle cannot hover within 6 steps. The core is R1, R2, R3 and R5: R4 plays no part. Report the requirements by their number."
+  },
+  {
+   "tool": "is_consistent",
+   "args": {
+    "contract": "$Patient"
+   },
+   "expect": {
+    "status": "sat",
+    "reals": "smt"
+   },
+   "note": "Within 10 steps it can: the witness trace has real values, kias going down by 10 at each step until the vehicle hovers."
+  }
+ ]
+}
