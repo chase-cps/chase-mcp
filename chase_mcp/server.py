@@ -260,30 +260,65 @@ def verify(contract: ContractSpec, timeout: float = 300,
 
 
 @tool
-def is_consistent(contract: ContractSpec, timeout: float = 300,
-               backend: Backend = "auto") -> dict:
+def is_consistent(contract: ContractSpec, core: bool = False, timeout: float = 300,
+                  backend: Backend = "auto") -> dict:
     """Consistency: is there a behavior allowed by the contract (A -> G
     satisfiable)? sat with a witness trace, or unsat when the guarantees
-    contradict each other."""
-    return chase_cps.is_consistent(contract.build(), backend, timeout=timeout).to_dict()
+    contradict each other; with core, the guarantees that contradict each
+    other."""
+    return chase_cps.is_consistent(contract.build(), backend, core=core,
+                                   timeout=timeout).to_dict()
 
 
 @tool
-def is_compatible(contract: ContractSpec, timeout: float = 300,
-               backend: Backend = "auto") -> dict:
+def is_compatible(contract: ContractSpec, core: bool = False, timeout: float = 300,
+                  backend: Backend = "auto") -> dict:
     """Compatibility: is there an environment that satisfies the assumptions?
     sat with a witness trace, or unsat when the assumptions contradict each
-    other."""
-    return chase_cps.is_compatible(contract.build(), backend, timeout=timeout).to_dict()
+    other; with core, the assumptions that contradict each other."""
+    return chase_cps.is_compatible(contract.build(), backend, core=core,
+                                   timeout=timeout).to_dict()
 
 
 @tool
-def is_realizable(contract: ContractSpec, timeout: float = 300) -> dict:
+def is_realizable(contract: ContractSpec, core: bool = False, timeout: float = 300) -> dict:
     """GR(1) realizability with slugs: can a component choose its outputs so
     that the guarantees hold for every environment satisfying the
     assumptions? realizable, or unrealizable with the counter-strategy of the
-    environment. Needs slugs; the formulas must be in the GR(1) fragment."""
-    return chase_cps.is_realizable(contract.build(), timeout=timeout).to_dict()
+    environment; with core, also the unrealizable core (see
+    unrealizable_core). Needs slugs; the formulas must be in the GR(1)
+    fragment."""
+    return chase_cps.is_realizable(contract.build(), core=core, timeout=timeout).to_dict()
+
+
+@tool
+def unrealizable_core(contract: ContractSpec, timeout: float = 300) -> dict:
+    """A minimal set of guarantees that is unrealizable under all the
+    assumptions: removing any of them makes the contract realizable. status
+    is found with core (the contract with those guarantees), none when the
+    contract is realizable, or unknown with the reason. Needs slugs."""
+    return chase_cps.unrealizable_core(contract.build(), timeout=timeout).to_dict()
+
+
+@tool
+def unsat_core(contract: ContractSpec | None = None, formulas: list[str] | None = None,
+               variables: dict[str, VarType] | None = None, timeout: float = 300,
+               backend: Backend = "auto") -> dict:
+    """A minimal set of terms that cannot hold together. Give a contract (its
+    assumptions and guarantees, A & G, are searched: the core says whether
+    the assumptions contradict each other, the guarantees do, or the
+    guarantees cannot hold when the assumptions do), or formulas with their
+    variables. status is found with core, none when they can hold together,
+    or unknown with the reason."""
+    if (contract is None) == (formulas is None):
+        raise ValueError("give either a contract or formulas")
+    if contract is not None:
+        return chase_cps.unsat_core(contract.build(), backend=backend,
+                                    timeout=timeout).to_dict()
+    if variables is None:
+        raise ValueError("formulas need their variables")
+    return chase_cps.unsat_core(formulas, _variables(variables), backend,
+                                timeout=timeout).to_dict()
 
 
 @tool
@@ -324,11 +359,12 @@ def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 
 
 
 @tool
-def is_satisfiable(formula: str, variables: dict[str, VarType], timeout: float = 300,
-                backend: Backend = "auto") -> dict:
-    """Is the LTL formula satisfiable? sat with a witness trace, or unsat."""
-    return chase_cps.is_satisfiable(formula, _variables(variables), backend,
-                                 timeout=timeout).to_dict()
+def is_satisfiable(formula: str, variables: dict[str, VarType], core: bool = False,
+                   timeout: float = 300, backend: Backend = "auto") -> dict:
+    """Is the LTL formula satisfiable? sat with a witness trace, or unsat;
+    with core, the conjuncts of the formula that cannot hold together."""
+    return chase_cps.is_satisfiable(formula, _variables(variables), backend, core=core,
+                                    timeout=timeout).to_dict()
 
 
 # Specifications in the CHASE language ---------------------------------------

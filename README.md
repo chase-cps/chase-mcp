@@ -27,6 +27,10 @@ contract):
   conjunction and disjunction.
 - **invert**: the reciprocal (G, A), the contract seen from its environment.
 - **assume** and **ensure**: add an assumption or a guarantee.
+- **unrealizable_core** and **unsat_core**: a minimal set of terms that
+  explains an unrealizable contract, or terms that cannot hold together.
+  `is_realizable`, `is_compatible`, `is_consistent`, and `is_satisfiable`
+  return it with `core`.
 - **saturate**: the equivalent contract (A, A -> G).
 - **simplify**: rewrites the formulas, as the simplify command of
   `logics_tool` (negations moved to the atoms, temporal operators grouped).

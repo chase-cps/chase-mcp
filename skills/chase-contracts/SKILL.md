@@ -27,6 +27,7 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | `verify`, `is_compatible`, `is_consistent` | `chase_cps.verify(c)`, `chase_cps.is_compatible(c)`, `chase_cps.is_consistent(c)` |
 | `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
 | `accepts`, `implements` | `chase_cps.accepts(c, environment)`, `chase_cps.implements(implementation, c)` |
+| `unrealizable_core`, `unsat_core` | `chase_cps.unrealizable_core(c)`, `chase_cps.unsat_core(c)` |
 | **LTL formulas** | |
 | `implies`, `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
 | **Specifications in the CHASE language** | |
@@ -83,7 +84,11 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
    consistent (some behavior satisfies A -> G). An unsat result means contradictory assumptions or guarantees.
    A consistent contract can still be unrealizable: consistency only says
    that some environment and some component agree. Use `is_realizable` when
-   the question is whether a component can be built.
+   the question is whether a component can be built. When a check fails,
+   pass `core: true` (or call `unsat_core` / `unrealizable_core`) to get the
+   few terms that cause it, and show those to the user rather than the whole
+   contract. `unsat_core` of a contract also finds guarantees that cannot
+   hold when the assumptions do, which `verify` does not report.
 3. **Compose and refine.** Compose the component contracts and check that the
    result refines the system contract (`refines`). With `discharge`, the
    composite keeps the terms of the components, which is easier to read and

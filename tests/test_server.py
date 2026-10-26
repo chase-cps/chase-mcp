@@ -43,7 +43,7 @@ def test_tools_are_listed():
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
             "accepts", "remove_redundant", "read_spec", "write_spec", "imply", "coimply",
-            "invert", "assume", "ensure"} == asyncio.run(run())
+            "invert", "assume", "ensure", "unsat_core", "unrealizable_core"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -187,3 +187,24 @@ def test_implication_reciprocal_and_actions():
     assert call("refines", {"refined": e, "abstract": SPEC})[1]["status"] == "valid"
     err, msg = call("assume", {"contract": SPEC, "formula": "G z"})
     assert err and "undeclared" in msg
+
+
+def test_cores():
+    arb = {"name": "Arb", "inputs": {"req": "bool", "stop": "bool"}, "outputs": {"grant": "bool"},
+           "assumptions": ["G F req"],
+           "guarantees": ["!grant", "G (req -> X grant)", "G (stop -> X !grant)", "G F grant"]}
+    if ADAPTERS["slugs"].available():
+        err, r = call("unrealizable_core", {"contract": arb})
+        assert not err and r["status"] == "found"
+        assert r["core"]["guarantees"] == ["G (req -> X grant)", "G (stop -> X !grant)"]
+        err, r = call("is_realizable", {"contract": arb, "core": True})
+        assert not err and r["core"]["status"] == "found"
+    err, r = call("unsat_core", {"formulas": ["p", "G (p -> X p)", "G F q", "F !p"],
+                                 "variables": {"p": "bool", "q": "bool"}})
+    assert not err and r["core"] == ["p", "G (p -> X p)", "F !p"]
+    c = {"name": "C", "inputs": {"a": "bool"}, "outputs": {"b": "bool"},
+         "assumptions": ["G a", "F !a"], "guarantees": ["G b"]}
+    err, r = call("is_compatible", {"contract": c, "core": True})
+    assert not err and r["status"] == "unsat" and r["core"]["core"]["assumptions"] == ["G a", "F !a"]
+    err, msg = call("unsat_core", {})
+    assert err and "either" in msg
