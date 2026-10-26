@@ -27,6 +27,8 @@ contract):
   conjunction and disjunction.
 - **invert**: the reciprocal (G, A), the contract seen from its environment.
 - **assume** and **ensure**: add an assumption or a guarantee.
+- **remove_vacuous**: removes the terms whose removal keeps realizability
+  and the controllers (where `remove_redundant` keeps A -> G).
 - **is_well_separated**: whether the component can win by forcing the
   environment to violate its assumptions, with that strategy and the
   assumptions that cause it.

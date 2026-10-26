@@ -237,6 +237,19 @@ def remove_redundant(contract: ContractSpec, timeout: float = 60,
     return chase_cps.remove_redundant(contract.build(), backend, timeout=timeout).to_dict()
 
 
+@tool
+def remove_vacuous(contract: ContractSpec, core: bool = False, timeout: float = 60,
+                   backend: Backend = "auto") -> dict:
+    """Remove the terms whose removal does not change the GR(1) specification
+    (its realizability and controllers): inherent vacuity, Maoz and Shalom
+    2020. Returns the contract and the removed terms in order, each with its
+    part (assumption or guarantee), its kind (init, safety, justice), and
+    with core the terms that make it vacuous. Unlike remove_redundant, which
+    keeps A -> G, this keeps the synthesis problem."""
+    return chase_cps.remove_vacuous(contract.build(), core=core, backend=backend,
+                                    timeout=timeout).to_dict()
+
+
 # Contract operations that check contracts -----------------------------------
 
 @tool

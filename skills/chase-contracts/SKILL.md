@@ -28,7 +28,7 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
 | `accepts`, `implements` | `chase_cps.accepts(c, environment)`, `chase_cps.implements(implementation, c)` |
 | `unrealizable_core`, `unsat_core` | `chase_cps.unrealizable_core(c)`, `chase_cps.unsat_core(c)` |
-| `is_well_separated` | `chase_cps.is_well_separated(c)` |
+| `is_well_separated`, `remove_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.remove_vacuous(c)` |
 | **LTL formulas** | |
 | `implies`, `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
 | **Specifications in the CHASE language** | |

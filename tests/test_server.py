@@ -43,7 +43,7 @@ def test_tools_are_listed():
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
             "accepts", "remove_redundant", "read_spec", "write_spec", "imply", "coimply",
-            "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated"} == asyncio.run(run())
+            "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated", "remove_vacuous"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -219,3 +219,12 @@ def test_well_separation():
     assert r["core"]["core"]["assumptions"] == ["G F req", "G (grant -> X !req)"]
     err, r = call("is_well_separated", {"contract": c, "with_guarantees": True})
     assert not err and r["status"] == "separated"
+
+
+def test_remove_vacuous():
+    c = {"name": "A", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+         "assumptions": ["G F req"], "guarantees": ["G (req -> grant)", "G F grant"]}
+    err, r = call("remove_vacuous", {"contract": c, "core": True})
+    assert not err and r["contract"]["guarantees"] == ["G (req -> grant)"]
+    assert r["removed"] == [{"term": "G F grant", "part": "guarantee", "kind": "justice",
+                             "core": ["G F req", "G (req -> grant)"]}]
