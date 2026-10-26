@@ -83,7 +83,10 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 
 1. **Write the contracts.** One contract per component, and one for the whole
    system. Keep each requirement as a separate formula: the checks and
-   `remove_redundant` work term by term.
+   `remove_redundant` work term by term. When starting from natural-language
+   requirements, follow `requirements.md`: variables and who controls them,
+   predicates, one pattern per requirement, and a table of the translation
+   that the user must confirm.
 2. **Sanity checks.** Run `verify` on every contract: it checks that the
    contract is compatible (some environment satisfies the assumptions) and
    consistent (some behavior satisfies A -> G). An unsat result means contradictory assumptions or guarantees.
