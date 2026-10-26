@@ -28,6 +28,7 @@ the Python package `chase_cps` (`pip install chase-cps`):
 | `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
 | `accepts`, `implements` | `chase_cps.accepts(c, environment)`, `chase_cps.implements(implementation, c)` |
 | `unrealizable_core`, `unsat_core` | `chase_cps.unrealizable_core(c)`, `chase_cps.unsat_core(c)` |
+| `is_well_separated` | `chase_cps.is_well_separated(c)` |
 | **LTL formulas** | |
 | `implies`, `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
 | **Specifications in the CHASE language** | |
@@ -88,7 +89,11 @@ Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
    pass `core: true` (or call `unsat_core` / `unrealizable_core`) to get the
    few terms that cause it, and show those to the user rather than the whole
    contract. `unsat_core` of a contract also finds guarantees that cannot
-   hold when the assumptions do, which `verify` does not report.
+   hold when the assumptions do, which `verify` does not report. Before
+   synthesis, check `is_well_separated`: a realizable contract that is not
+   well-separated lets the controller win by breaking its environment; weaken
+   the assumptions given in the core, or make them independent of the
+   outputs.
 3. **Compose and refine.** Compose the component contracts and check that the
    result refines the system contract (`refines`). With `discharge`, the
    composite keeps the terms of the components, which is easier to read and

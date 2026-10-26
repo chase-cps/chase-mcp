@@ -27,6 +27,9 @@ contract):
   conjunction and disjunction.
 - **invert**: the reciprocal (G, A), the contract seen from its environment.
 - **assume** and **ensure**: add an assumption or a guarantee.
+- **is_well_separated**: whether the component can win by forcing the
+  environment to violate its assumptions, with that strategy and the
+  assumptions that cause it.
 - **unrealizable_core** and **unsat_core**: a minimal set of terms that
   explains an unrealizable contract, or terms that cannot hold together.
   `is_realizable`, `is_compatible`, `is_consistent`, and `is_satisfiable`

@@ -292,6 +292,20 @@ def is_realizable(contract: ContractSpec, core: bool = False, timeout: float = 3
 
 
 @tool
+def is_well_separated(contract: ContractSpec, with_guarantees: bool = False, core: bool = False,
+                      timeout: float = 300) -> dict:
+    """Well-separation (GR(1), slugs): can the component win by forcing the
+    environment to violate its assumptions? separated when it cannot;
+    not_separated with the controller that forces the violation, which means
+    the assumptions are too weak or depend on the outputs; with core, a
+    minimal set of assumptions that causes it. With with_guarantees the
+    component must keep its initial and safety guarantees. Only violations
+    forced from every initial state are detected."""
+    return chase_cps.is_well_separated(contract.build(), with_guarantees=with_guarantees,
+                                       core=core, timeout=timeout).to_dict()
+
+
+@tool
 def unrealizable_core(contract: ContractSpec, timeout: float = 300) -> dict:
     """A minimal set of guarantees that is unrealizable under all the
     assumptions: removing any of them makes the contract realizable. status
