@@ -61,8 +61,8 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
   Variables are `"bool"`, bounded integers `[low, high]`, or `"real"`; keep
   the integer ranges small, the checks get slower with large ranges.
 - Real variables: when they are only compared with constants
-  (`kias > 40`), every check works, synthesis too, and the result says
-  `reals: "regions"`. With arithmetic between them (`ia - ib > T`) the model
+  (`kias > 40`) or with each other (`kias = kgs`), every check works,
+  synthesis too, and the result says `reals: "regions"`. With arithmetic between them (`ia - ib > T`) the model
   checker checks them (`reals: "smt"`, nuXmv only), but realizability and
   synthesis are unknown. With nonlinear arithmetic (`x * y`) the answer may
   be unknown; with `reals: "predicates"` a valid or unsat answer holds, and
