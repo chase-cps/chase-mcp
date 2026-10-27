@@ -107,6 +107,16 @@ def test_stdio_server():
     assert not err and r["name"]
 
 
+def test_server_version():
+    import chase_mcp
+
+    async def run():
+        async with Client(server) as client:
+            return client.server_info
+    info = asyncio.run(run())
+    assert info.name == "chase" and info.version == chase_mcp.__version__
+
+
 def test_algebra_bounds():
     err, meet = call("conjoin", {"contracts": [SPEC, IMPL]})
     assert not err

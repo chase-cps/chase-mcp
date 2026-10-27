@@ -29,6 +29,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from chase_mcp import __version__
+
 VarType = Union[Literal["bool", "real"], tuple[int, int]]
 Backend = Literal["auto", "nuxmv", "nusmv"]
 
@@ -74,7 +76,7 @@ states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
 """
 
-server = MCPServer(name="chase", instructions=INSTRUCTIONS)
+server = MCPServer(name="chase", instructions=INSTRUCTIONS, version=__version__)
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True,
                             open_world_hint=False)
