@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "chase-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server exposing the contract operations of CHASE as agent-callable tools"
 readme = "README.md"
 license = "BSD-3-Clause"
 authors = [{ name = "Yifeng Xiao", email = "yifengx@berkeley.edu" }]
 requires-python = ">=3.10"
 dependencies = [
-    "chase-cps>=0.2",
+    "chase-cps>=0.3",
     "mcp>=2,<3",
     "pydantic>=2",
 ]
