@@ -112,7 +112,7 @@ it. Otherwise:
 
 and use `chase-mcp` in place of `uvx chase-mcp` below.
 
-Until the first release on PyPI, install from the repositories:
+The development version is installed from the repositories:
 
 `$> pip install "chase-cps @ git+https://github.com/chase-cps/chase" "chase-mcp @ git+https://github.com/chase-cps/chase-mcp"`
 
