@@ -260,14 +260,19 @@ def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
 
 
 @tool
-def verify(contract: ContractSpec, timeout: float = 300,
+def verify(contract: ContractSpec, core: bool = False, timeout: float = 300,
            backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Compatibility and consistency of the contract (the verify command of
-    logics_tool): status is sat when both hold; the results of the two checks
-    are in compatible and consistent.
+    """Can the assumptions and the guarantees hold together (A & G
+    satisfiable, the verify command of logics_tool)? status is that of
+    feasible: sat with a witness trace, which also shows compatibility (A
+    satisfiable) and consistency (A -> G satisfiable); unsat when the
+    guarantees cannot hold when the assumptions do, and then compatible and
+    consistent say whether the assumptions alone cannot hold. With core, an
+    unsat result carries the terms that conflict (in feasible.core).
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.verify(contract.build(), backend, context=context, timeout=timeout).to_dict()
+    return chase_cps.verify(contract.build(), backend, context=context, core=core,
+                            timeout=timeout).to_dict()
 
 
 @tool
@@ -413,14 +418,15 @@ def unrealizable_core(contract: ContractSpec, timeout: float = 300) -> dict:
 
 
 @tool
-def is_well_separated(contract: ContractSpec, with_guarantees: bool = False, core: bool = False,
+def is_well_separated(contract: ContractSpec, with_guarantees: bool = True, core: bool = False,
                       timeout: float = 300) -> dict:
     """GR(1) synthesis (slugs): well-separation. Can the component win by
     forcing the environment to violate its assumptions? separated when it cannot;
     not_separated with the controller that forces the violation, which means
     the assumptions are too weak or depend on the outputs; with core, a
-    minimal set of assumptions that causes it. With with_guarantees the
-    component must keep its initial and safety guarantees. Only violations
+    minimal set of assumptions that causes it. The component must keep its
+    initial and safety guarantees while it forces the violation (with
+    with_guarantees false, the guarantees are left out). Only violations
     forced from every initial state are detected."""
     return chase_cps.is_well_separated(contract.build(), with_guarantees=with_guarantees,
                                        core=core, timeout=timeout).to_dict()
