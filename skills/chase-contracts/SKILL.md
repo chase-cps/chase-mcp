@@ -1,6 +1,6 @@
 ---
 name: chase-contracts
-description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, or well-separation, find which terms cause a failure (unsat or unrealizable core), remove redundant or vacuous terms, synthesize a controller, or explain a counterexample from these checks.
+description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, or explain a counterexample from these checks.
 ---
 
 # Assume-guarantee contracts with CHASE
@@ -29,7 +29,8 @@ contract, not that the contract is wrong in general.
 | **2. Checks on contracts (nuXmv)** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
 | `verify`, `is_compatible`, `is_consistent` | `chase_cps.verify(c)`, `chase_cps.is_compatible(c)`, `chase_cps.is_consistent(c)` |
-| `implements`, `accepts` | `chase_cps.implements(implementation, c)`, `chase_cps.accepts(c, environment)` |
+| `implements`, `accepts` | `chase_cps.implements(implementation, c)`, `chase_cps.accepts(c, environment)`: a formula or a state machine |
+| `is_receptive` | `chase_cps.is_receptive(model, c)` |
 | `remove_redundant` | `chase_cps.remove_redundant(c)` |
 | **2. Queries on formulas** | |
 | `implies` (validity), `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
@@ -37,7 +38,8 @@ contract, not that the contract is wrong in general.
 | **3. GR(1) synthesis (slugs)** | |
 | `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
 | `unrealizable_core` | `chase_cps.unrealizable_core(c)`; or `core=True` on `is_realizable` |
-| `is_well_separated`, `remove_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.remove_vacuous(c)` |
+| `is_well_separated`, `is_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.is_vacuous(c)` |
+| `remove_vacuous` (redundancy in the GR(1) game) | `chase_cps.remove_vacuous(c)` |
 | **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 
@@ -45,9 +47,11 @@ The operations that build contracts return a new contract. The checks return
 a status and, when they fail, a counterexample. `implies` checks validity
 (true for every behavior); `is_satisfiable` checks that some behavior
 satisfies a formula, which is not the satisfaction of a contract by a
-component (`implements`). With `core: true`, `is_realizable`,
-`is_compatible`, `is_consistent`, `is_satisfiable`, and `is_well_separated`
-also return a core: the few terms that cause the failure.
+component (`implements`). With `core: true`, `verify`, `is_realizable`,
+`is_compatible`, `is_consistent`, `is_satisfiable`, `is_well_separated`,
+and `is_vacuous` also return a core: the few terms that cause the failure
+(for `is_vacuous`, the assumptions that let the component win without the
+output).
 
 In Python a contract is built with
 `Contract.from_dict(d)` or `Contract.from_strings(inputs=..., outputs=..., assumptions=..., guarantees=..., name=...)`.
@@ -111,15 +115,19 @@ satisfies the contract, so `verify` would still find it.
    predicates, one pattern per requirement, and a table of the translation
    that the user must confirm.
 2. **Sanity checks.** Run `verify` on every contract: it checks that the
-   contract is compatible (some environment satisfies the assumptions) and
-   consistent (some behavior satisfies A -> G). An unsat result means contradictory assumptions or guarantees.
-   A consistent contract can still be unrealizable: consistency only says
+   assumptions and the guarantees can hold together (A & G satisfiable),
+   which implies that the contract is compatible (some environment
+   satisfies the assumptions) and consistent (some behavior satisfies
+   A -> G). An unsat result means contradictory assumptions, or guarantees
+   that cannot hold when the assumptions do; `compatible` and `consistent`
+   in the result say which. A contract can be compatible and consistent and
+   still fail `verify`: A -> G holds whenever the environment breaks A.
+   A verified contract can still be unrealizable: `verify` only says
    that some environment and some component agree. Use `is_realizable` when
    the question is whether a component can be built. When a check fails,
    pass `core: true` (or call `unsat_core` / `unrealizable_core`) to get the
    few terms that cause it, and show those to the user rather than the whole
-   contract. `unsat_core` of a contract also finds guarantees that cannot
-   hold when the assumptions do, which `verify` does not report.
+   contract.
 3. **Compose and refine.** Compose the component contracts and check that the
    result refines the system contract (`refines`). With `discharge`, the
    composite keeps the terms of the components, which is easier to read and
@@ -150,19 +158,51 @@ satisfies the contract, so `verify` would still find it.
      guarantees that conflict, and the counter-strategy shows how the
      environment wins; weaken one of them or add the assumption that is
      missing.
-   - `is_well_separated` (with `with_guarantees: true` to keep the safety
-     guarantees): if not separated, the controller can satisfy the contract
-     by forcing the environment to break its assumptions instead of serving
-     it. Weaken the assumptions in the core, or make them depend less on the
-     outputs (e.g. "after a grant of the request" rather than "after any
-     grant").
-   - `remove_vacuous`: drops the terms that do not change the synthesis
-     problem; report them, they often show a misunderstanding.
-   - `synthesize` builds the controller.
-7. **Viewpoints.** Use `merge` for different aspects of the same component
+   - `is_well_separated`: if not separated, the controller can satisfy the
+     contract by forcing the environment to break its assumptions instead of
+     serving it, while keeping its initial and safety guarantees. Weaken the
+     assumptions in the core, or make them depend less on the outputs (e.g.
+     "after a grant of the request" rather than "after any grant").
+   - `is_vacuous`: if vacuous, the controller can win without an output that
+     a liveness guarantee asks for (never, or from some step on): the
+     assumptions in the core already make the guarantee hold. The guarantee
+     obliges nothing; usually an assumption is too strong (e.g. "the robot
+     stops asking on its own" instead of "after a grant").
+   - `remove_vacuous`: drops the terms that are redundant in the GR(1) game
+     (implied by others without changing the synthesis problem); report
+     them, they often show a misunderstanding. This is redundancy, not the
+     vacuity of `is_vacuous`.
+   - `synthesize` builds the controller, and `implements` with the
+     controller (and `is_receptive`) checks it against other contracts.
+7. **Implementations and environments.** When the user has a component
+   already, as a state machine (an SMV model, a state machine in JSON, or a
+   controller from `synthesize`) or as a formula of its behaviors, use
+   `implements(implementation, c)`: every behavior must satisfy A -> G. For
+   a state machine also run `is_receptive`: a machine that refuses some
+   inputs implements the contract only because those inputs never happen;
+   the result gives the state and the input it refuses. When the component
+   is placed in an environment (another component, an operating scenario),
+   use `accepts(c, environment)`: every behavior of the environment must
+   satisfy the assumptions. An invalid result gives the environment
+   behavior that the component does not expect.
+8. **Viewpoints.** Use `merge` for different aspects of the same component
    (function, timing, safety), and `separate` to remove a viewpoint.
-   Use `conjoin` when several specifications must hold at once.
-8. **Clean up.** `remove_redundant` drops the terms implied by the others
+   Use `conjoin` when several specifications must hold at once, and
+   `disjoin` for a contract that either of two specifications satisfies
+   (two acceptable variants, such as two operating modes).
+9. **Changing a contract.**
+   - `assume` with a formula b: the component is responsible only when b
+     holds (an operating mode, a range of the inputs); the result is an
+     abstraction of the contract. `ensure` with b adds the guarantee b; the
+     result refines the contract.
+   - `invert`: the contract seen from the environment, with inputs and
+     outputs swapped: what the environment must guarantee and may assume.
+     Use it to write the contract that a neighbor component must meet.
+   - `imply` with premise c1 and conclusion c2: the largest contract C such
+     that C and c1 together (conjunction) refine c2: what must be added to
+     the specification c1 to meet c2. It is to conjunction what `divide` is to composition.
+     `coimply` is the adjoint of `disjoin`; it is rarely needed.
+10. **Clean up.** `remove_redundant` drops the terms implied by the others
    (keeping A -> G); `remove_vacuous` keeps realizability instead;
    `simplify` rewrites the formulas into a shorter equivalent form.
    `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
@@ -180,8 +220,8 @@ assumptions.
 
 ## Realizability
 
-`is_realizable`, `synthesize`, `is_well_separated`, `unrealizable_core`, and
-`remove_vacuous` need formulas in the GR(1) fragment: initial conditions
+`is_realizable`, `synthesize`, `is_well_separated`, `is_vacuous`,
+`unrealizable_core`, and `remove_vacuous` need formulas in the GR(1) fragment: initial conditions
 without temporal operators, safety `G (...)` over the current and next
 values (`x'` or `X x`), and liveness `G F (...)`. In addition, the initial
 assumptions can only read inputs, and the safety assumptions can only read
@@ -209,10 +249,12 @@ explains it. Read the one closest to the task before starting:
 - `chase-spec.json`: reading and writing specifications in the CHASE
   language.
 - `charger.json`: two robots and an arbiter; an unrealizable core, a
-  contract that is not well-separated, vacuous terms, and the composition of
-  components that feed each other.
+  contract that is not well-separated, vacuity (an arbiter that wins without
+  granting), a redundant guarantee, and the composition of components that
+  feed each other.
 - `algebra.json`: implication, reciprocal and quotient, adding assumptions
-  or guarantees, and an unsat core of assumptions and guarantees.
+  or guarantees, and a contract that is compatible and consistent but fails
+  `verify`, with its unsat core.
 - `airspeed.json`: requirements with a real variable compared at two steps,
   checked with the SMT engine of nuXmv; the requirements in conflict and a
   behavior with real values.

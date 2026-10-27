@@ -43,7 +43,8 @@ def test_tools_are_listed():
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
             "accepts", "remove_redundant", "read_spec", "write_spec", "imply", "coimply",
-            "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated", "remove_vacuous"} == asyncio.run(run())
+            "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated", "remove_vacuous",
+            "is_vacuous", "is_receptive"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -160,6 +161,74 @@ def test_implementation_and_environment():
     assert not err and r["status"] == "invalid"
 
 
+BLOCKING = """MODULE main
+IVAR
+  req : boolean;
+VAR
+  grant : boolean;
+ASSIGN
+  init(grant) := FALSE;
+TRANS
+  next(grant) = req
+TRANS
+  !(grant & req)
+"""
+NEXT = {"name": "Next", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+        "guarantees": ["G (req -> X grant)"]}
+
+
+def test_state_machines():
+    err, r = call("implements", {"contract": NEXT, "smv": BLOCKING})
+    assert not err and r["status"] == "valid"
+    err, r = call("is_receptive", {"contract": NEXT, "smv": BLOCKING})
+    assert not err and r["status"] == "not_receptive"
+    assert r["details"]["input"] == {"req": True}
+    machine = {"name": "Slow", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+               "states": ["idle", "busy"], "initial": "idle",
+               "transitions": [
+                   {"from": "idle", "when": "req", "outputs": {"grant": False}, "to": "busy"},
+                   {"from": "idle", "when": "!req", "outputs": {"grant": False}, "to": "idle"},
+                   {"from": "busy", "outputs": {"grant": True}, "to": "idle"}]}
+    err, r = call("implements", {"contract": NEXT, "machine": machine})
+    assert not err and r["status"] == "invalid"
+    err, r = call("is_receptive", {"contract": NEXT, "machine": machine})
+    assert not err and r["status"] == "receptive"
+    env = "MODULE main\nVAR\n  req : boolean;\nASSIGN\n  init(req) := FALSE;\n  next(req) := !req;\n"
+    spaced = {**NEXT, "name": "Spaced", "assumptions": ["G (req -> X !req)"]}
+    err, r = call("accepts", {"contract": spaced, "smv": env})
+    assert not err and r["status"] == "valid"
+    err, msg = call("implements", {"contract": NEXT})
+    assert err and "formula or as a state machine" in msg
+    err, msg = call("implements", {"contract": NEXT, "smv": "MODULE main\nVAR\n  x : boolean;\n"})
+    assert err and "does not declare" in msg
+
+
+slugs = pytest.mark.skipif(not ADAPTERS["slugs"].available(), reason="slugs not installed")
+
+
+@slugs
+def test_controller_and_vacuity():
+    arb = {"name": "Arb", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
+           "assumptions": ["!req", "G ((req & grant) -> X !req)", "G ((req & !grant) -> X req)"],
+           "guarantees": ["!grant", "G (grant -> req)", "G F (!req | grant)"]}
+    err, r = call("synthesize", {"contract": arb})
+    assert not err and r["status"] == "realizable"
+    err, q = call("implements", {"contract": arb, "controller": r["controller"]})
+    assert not err and q["status"] == "valid"
+    err, q = call("is_receptive", {"contract": arb, "controller": r["controller"]})
+    assert not err and q["status"] == "receptive"
+    free = {**arb, "name": "Free", "assumptions": []}
+    err, q = call("is_receptive", {"contract": free, "controller": r["controller"],
+                                   "synthesized_from": arb})
+    assert not err and q["status"] == "not_receptive"
+    err, v = call("is_vacuous", {"contract": arb})
+    assert not err and v["status"] == "not_vacuous" and v["checked"] == ["grant"]
+    trusting = {**arb, "name": "Trusting", "assumptions": ["!req", "G F !req"]}
+    err, v = call("is_vacuous", {"contract": trusting, "core": True})
+    assert not err and v["status"] == "vacuous"
+    assert v["vacuous"][0]["mode"] == "never" and v["vacuous"][0]["core"]["core"] == ["G F !req"]
+
+
 def test_spec_round_trip():
     err, text = call("write_spec", {"contracts": [SPEC], "name": "demo"})
     assert not err and "CONTRACT Spec" in text
@@ -237,10 +306,12 @@ def test_cores():
 def test_well_separation():
     c = {"name": "Arb", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
          "assumptions": ["G F req", "G (grant -> X !req)"], "guarantees": ["G !grant"]}
-    err, r = call("is_well_separated", {"contract": c, "core": True})
+    # without the guarantees (Def. 2), granting forever forces the violation
+    err, r = call("is_well_separated", {"contract": c, "core": True, "with_guarantees": False})
     assert not err and r["status"] == "not_separated" and "controller" in r
     assert r["core"]["core"]["assumptions"] == ["G F req", "G (grant -> X !req)"]
-    err, r = call("is_well_separated", {"contract": c, "with_guarantees": True})
+    # keeping G !grant (the default), the component cannot
+    err, r = call("is_well_separated", {"contract": c})
     assert not err and r["status"] == "separated"
 
 

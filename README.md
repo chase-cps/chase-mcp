@@ -40,12 +40,17 @@ satisfies, such as the axiom of an encoding of finite traces.
 
 - **refines**: whether a contract refines another one, and which part fails
   (assumptions or guarantees).
-- **verify**: compatibility and consistency; **is_compatible** (some
-  environment satisfies the assumptions) and **is_consistent** (some behavior
-  satisfies the contract) check them one at a time.
+- **verify**: whether the assumptions and the guarantees can hold together
+  (A & G satisfiable), which implies compatibility and consistency;
+  **is_compatible** (some environment satisfies the assumptions) and
+  **is_consistent** (some behavior satisfies the contract) check them one at
+  a time.
 - **implements** and **accepts**: whether an implementation satisfies the
-  contract, and whether the contract accepts an environment, both given as
-  LTL formulas.
+  contract, and whether the contract accepts an environment, given as LTL
+  formulas or as state machines (an SMV model, a state machine in JSON, or a
+  controller from `synthesize`).
+- **is_receptive**: whether a state machine accepts every input that the
+  assumptions allow, with the state and the input it refuses.
 - **remove_redundant**: removes the assumptions and guarantees implied by the
   other terms of the contract.
 - **implies** and **is_satisfiable**, on formulas: validity of an
@@ -53,8 +58,8 @@ satisfies, such as the axiom of an encoding of finite traces.
   this is not the satisfaction of a contract by a component, which is
   `implements`).
 - **unsat_core**: a minimal set of terms that cannot hold together;
-  `is_compatible`, `is_consistent`, and `is_satisfiable` return it with
-  `core`.
+  `verify`, `is_compatible`, `is_consistent`, and `is_satisfiable` return
+  it with `core`.
 
 **3. GR(1) synthesis, with slugs.** These tools are about synthesizing a
 component from a contract in the GR(1) fragment of LTL, not about contracts
@@ -65,10 +70,14 @@ in general.
 - **unrealizable_core**: a minimal set of guarantees that is unrealizable;
   `is_realizable` returns it with `core`.
 - **is_well_separated**: whether the component can win by forcing the
-  environment to violate its assumptions, with that strategy and the
-  assumptions that cause it.
-- **remove_vacuous**: removes the terms whose removal keeps realizability
-  and the controllers (where `remove_redundant` keeps A -> G).
+  environment to violate its assumptions while it keeps its safety
+  guarantees, with that strategy and the assumptions that cause it.
+- **is_vacuous**: whether the component can win without an output that a
+  liveness guarantee asks for (vacuity in synthesis), with that strategy and
+  the assumptions that allow it.
+- **remove_vacuous**: removes the terms that are redundant in the GR(1) game,
+  keeping realizability and the controllers (where `remove_redundant` keeps
+  A -> G).
 
 Specifications:
 

@@ -73,14 +73,16 @@ The tools are in three layers:
    imply, coimply, invert, assume, ensure, saturate, simplify): they return a
    new contract, and hold for any assume-guarantee contracts.
 2. Checks on contracts (refines, verify, is_compatible, is_consistent,
-   implements, accepts, remove_redundant), which reduce to queries on
+   implements, accepts, is_receptive, remove_redundant), which reduce to queries on
    formulas: implies (validity), is_satisfiable (satisfiability of a
    formula, not the satisfaction of a contract by a component, which is
    implements), and unsat_core. They take a context: formulas that every
-   behavior satisfies.
+   behavior satisfies. implements and accepts also take state machines
+   (SMV, a state machine in JSON, or a synthesized controller), and
+   is_receptive checks that a machine does not refuse the inputs.
 3. GR(1) synthesis with slugs (is_realizable, synthesize, unrealizable_core,
-   is_well_separated, remove_vacuous): only for contracts in the GR(1)
-   fragment of LTL, about whether a component can be synthesized.
+   is_well_separated, is_vacuous, remove_vacuous): only for contracts in the
+   GR(1) fragment of LTL, about whether a component can be synthesized.
 
 The check tools return a status:
 valid/invalid for implications, sat/unsat for satisfiability,
@@ -300,26 +302,94 @@ def is_compatible(contract: ContractSpec, core: bool = False, timeout: float = 3
                                    timeout=timeout).to_dict()
 
 
-@tool
-def implements(implementation: str, contract: ContractSpec, timeout: float = 300,
-               backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Does the implementation (an LTL formula describing the behaviors of a
-    component) implement the contract, i.e. implementation & A -> G?
-    `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.implements(implementation, contract.build(), backend, context=context,
-                                timeout=timeout).to_dict()
+MACHINE_DOC = """The state machine is given as one of: `smv`, a program in SMV (the input
+    language of nuXmv: MODULE main with VAR/IVAR, INIT, TRANS..., no
+    specification) that declares the variables of the contract; `machine`, a
+    state machine in JSON {"name", "inputs", "outputs", "states", "initial",
+    "transitions": [{"from", "when", "outputs", "to"}]}: at each step, in its
+    state, the machine takes a transition whose `when` (a formula over the
+    variables) holds, sets the outputs of that step, and moves to `to`; or
+    `controller`, the controller returned by synthesize, with the contract it
+    was synthesized from in `synthesized_from` (default: the contract)."""
+
+
+def _machine_doc(fn):
+    """Append the forms of a state machine to the description of the tool."""
+    fn.__doc__ = fn.__doc__.rstrip() + "\n    " + MACHINE_DOC
+    return fn
+
+
+def _model(smv, machine, controller, synthesized_from, contract: Contract):
+    given = [x for x in (smv, machine, controller) if x is not None]
+    if len(given) > 1:
+        raise ValueError("give one of smv, machine, and controller")
+    if smv is not None:
+        return chase_cps.Model.from_smv(smv)
+    if machine is not None:
+        return chase_cps.Model.from_dict(machine)
+    if controller is not None:
+        source = synthesized_from.build() if synthesized_from is not None else contract
+        return chase_cps.Model.from_controller(controller, source)
+    return None
 
 
 @tool
-def accepts(contract: ContractSpec, environment: str, timeout: float = 300,
-            backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Does the contract accept the environment (an LTL formula over the
-    variables of the contract), i.e. environment -> A?
+@_machine_doc
+def implements(contract: ContractSpec, implementation: str | None = None,
+               smv: str | None = None, machine: dict | None = None,
+               controller: dict | None = None, synthesized_from: ContractSpec | None = None,
+               timeout: float = 300, backend: Backend = "auto",
+               context: list[str] | None = None) -> dict:
+    """Does the implementation implement the contract? The implementation is
+    an LTL formula (`implementation`): implementation & A -> G must be valid;
+    or a state machine, every behavior of which must satisfy A -> G. A
+    machine that refuses inputs can implement a contract only because of
+    that: check it with is_receptive. valid, or invalid with a trace.
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.accepts(contract.build(), environment, backend, context=context,
-                             timeout=timeout).to_dict()
+    c = contract.build()
+    m = _model(smv, machine, controller, synthesized_from, c)
+    if (m is None) == (implementation is None):
+        raise ValueError("give the implementation as a formula or as a state machine")
+    return chase_cps.implements(m if m is not None else implementation, c, backend,
+                                context=context, timeout=timeout).to_dict()
+
+
+@tool
+def accepts(contract: ContractSpec, environment: str | None = None, smv: str | None = None,
+            machine: dict | None = None, timeout: float = 300, backend: Backend = "auto",
+            context: list[str] | None = None) -> dict:
+    """Does the contract accept the environment? The environment is an LTL
+    formula over the variables of the contract (`environment`):
+    environment -> A must be valid; or a state machine (`smv` or `machine`,
+    as for implements) every behavior of which must satisfy A.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    c = contract.build()
+    m = _model(smv, machine, None, None, c)
+    if (m is None) == (environment is None):
+        raise ValueError("give the environment as a formula or as a state machine")
+    return chase_cps.accepts(c, m if m is not None else environment, backend,
+                             context=context, timeout=timeout).to_dict()
+
+
+@tool
+@_machine_doc
+def is_receptive(contract: ContractSpec, smv: str | None = None, machine: dict | None = None,
+                 controller: dict | None = None,
+                 synthesized_from: ContractSpec | None = None, timeout: float = 300,
+                 backend: Backend = "auto") -> dict:
+    """Does the state machine accept every input that the assumptions of the
+    contract allow? A machine that refuses an input has no behavior with it,
+    so implements may hold only because it blocks the inputs. receptive, or
+    not_receptive with the trace to the state after which it refuses an
+    input (details: state and input). Uses the initial and safety
+    assumptions; the inputs must be Boolean or integer ranges."""
+    c = contract.build()
+    m = _model(smv, machine, controller, synthesized_from, c)
+    if m is None:
+        raise ValueError("give the state machine: smv, machine, or controller")
+    return chase_cps.is_receptive(m, c, backend, timeout=timeout).to_dict()
 
 
 @tool
@@ -433,15 +503,32 @@ def is_well_separated(contract: ContractSpec, with_guarantees: bool = True, core
 
 
 @tool
+def is_vacuous(contract: ContractSpec, outputs: list[str] | None = None, core: bool = False,
+               timeout: float = 300) -> dict:
+    """GR(1) synthesis (slugs): vacuity. Can the component win without an
+    output that a liveness guarantee asks for (Bloem et al., FMSD 2021)?
+    vacuous lists each such output with its mode, never (a winning strategy
+    never sets it: the guarantee that names it is discharged by the
+    assumptions) or eventually (a winning strategy stops setting it), and the
+    strategy; with core, a minimal set of assumptions that lets it.
+    not_vacuous; unrealizable when the contract itself is; unknown. The
+    outputs checked are `outputs`, by default those that occur only
+    positively in a liveness guarantee (G F ...)."""
+    return chase_cps.is_vacuous(contract.build(), outputs=outputs, core=core,
+                                timeout=timeout).to_dict()
+
+
+@tool
 def remove_vacuous(contract: ContractSpec, core: bool = False, timeout: float = 60,
                    backend: Backend = "auto") -> dict:
-    """GR(1) synthesis: remove the terms whose removal does not change the GR(1)
-    specification (its realizability and controllers), checked with nuXmv:
-    inherent vacuity, Maoz and Shalom 2020. Returns the contract and the
-    removed terms in order, each with its part (assumption or guarantee), its
-    kind (init, safety, justice), and with core the terms that make it
-    vacuous. Unlike remove_redundant, which keeps A -> G, this keeps the
-    synthesis problem."""
+    """GR(1) synthesis: redundancy in the GR(1) game. Remove the terms
+    implied by others in a way that does not change the GR(1) specification
+    (its realizability and controllers), checked with nuXmv (the inherent
+    vacuity of Maoz and Shalom 2020). Returns the contract and the removed
+    terms in order, each with its part (assumption or guarantee), its kind
+    (init, safety, justice), and with core the terms that imply it. Unlike
+    remove_redundant, which keeps A -> G, this keeps the synthesis problem.
+    Vacuity in the sense of a guarantee that obliges nothing is is_vacuous."""
     return chase_cps.remove_vacuous(contract.build(), core=core, backend=backend,
                                     timeout=timeout).to_dict()
 
