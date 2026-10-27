@@ -68,7 +68,21 @@ bind tighter than binary ones: G a -> b is (G a) -> b; write G (a -> b).
 Names cannot be keywords (G F X U R W true false, and CHASE keywords such as
 P, NAME, CONTRACT).
 
-The algebra tools return a new contract. The check tools return a status:
+The tools are in three layers:
+1. Contract algebra (compose, conjoin, disjoin, merge, divide, separate,
+   imply, coimply, invert, assume, ensure, saturate, simplify): they return a
+   new contract, and hold for any assume-guarantee contracts.
+2. Checks on contracts (refines, verify, is_compatible, is_consistent,
+   implements, accepts, remove_redundant), which reduce to queries on
+   formulas: implies (validity), is_satisfiable (satisfiability of a
+   formula, not the satisfaction of a contract by a component, which is
+   implements), and unsat_core. They take a context: formulas that every
+   behavior satisfies.
+3. GR(1) synthesis with slugs (is_realizable, synthesize, unrealizable_core,
+   is_well_separated, remove_vacuous): only for contracts in the GR(1)
+   fragment of LTL, about whether a component can be synthesized.
+
+The check tools return a status:
 valid/invalid for implications, sat/unsat for satisfiability,
 realizable/unrealizable, or unknown with a reason (e.g. a timeout). A failed
 check comes with a counterexample trace: the states of `prefix`, then the
@@ -115,7 +129,7 @@ def _fold(contracts: list[ContractSpec], operation: str, name: str | None) -> di
     return result.to_dict()
 
 
-# Contract operations that build contracts -----------------------------------
+# 1. Contract algebra: operations that build contracts ------------------------
 
 @tool
 def compose(contracts: list[ContractSpec], name: str | None = None, discharge: bool = False,
@@ -230,33 +244,7 @@ def simplify(contract: ContractSpec, name: str | None = None) -> dict:
     return contract.build().simplify(name).to_dict()
 
 
-@tool
-def remove_redundant(contract: ContractSpec, timeout: float = 60,
-                     backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Drop the assumptions implied by the other assumptions, and the
-    guarantees implied by the assumptions and the other guarantees.
-    Returns the contract and the terms removed; terms whose check did not
-    finish are kept and listed in `unknown`.
-    `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.remove_redundant(contract.build(), backend, context=context,
-                                      timeout=timeout).to_dict()
-
-
-@tool
-def remove_vacuous(contract: ContractSpec, core: bool = False, timeout: float = 60,
-                   backend: Backend = "auto") -> dict:
-    """Remove the terms whose removal does not change the GR(1) specification
-    (its realizability and controllers): inherent vacuity, Maoz and Shalom
-    2020. Returns the contract and the removed terms in order, each with its
-    part (assumption or guarantee), its kind (init, safety, justice), and
-    with core the terms that make it vacuous. Unlike remove_redundant, which
-    keeps A -> G, this keeps the synthesis problem."""
-    return chase_cps.remove_vacuous(contract.build(), core=core, backend=backend,
-                                    timeout=timeout).to_dict()
-
-
-# Contract operations that check contracts -----------------------------------
+# 2. Checks on contracts ------------------------------------------------------
 
 @tool
 def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
@@ -308,44 +296,73 @@ def is_compatible(contract: ContractSpec, core: bool = False, timeout: float = 3
 
 
 @tool
-def is_realizable(contract: ContractSpec, core: bool = False, timeout: float = 300) -> dict:
-    """GR(1) realizability with slugs: can a component choose its outputs so
-    that the guarantees hold for every environment satisfying the
-    assumptions? realizable, or unrealizable with the counter-strategy of the
-    environment; with core, also the unrealizable core (see
-    unrealizable_core). Needs slugs; the formulas must be in the GR(1)
-    fragment."""
-    return chase_cps.is_realizable(contract.build(), core=core, timeout=timeout).to_dict()
+def implements(implementation: str, contract: ContractSpec, timeout: float = 300,
+               backend: Backend = "auto", context: list[str] | None = None) -> dict:
+    """Does the implementation (an LTL formula describing the behaviors of a
+    component) implement the contract, i.e. implementation & A -> G?
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.implements(implementation, contract.build(), backend, context=context,
+                                timeout=timeout).to_dict()
 
 
 @tool
-def is_well_separated(contract: ContractSpec, with_guarantees: bool = False, core: bool = False,
-                      timeout: float = 300) -> dict:
-    """Well-separation (GR(1), slugs): can the component win by forcing the
-    environment to violate its assumptions? separated when it cannot;
-    not_separated with the controller that forces the violation, which means
-    the assumptions are too weak or depend on the outputs; with core, a
-    minimal set of assumptions that causes it. With with_guarantees the
-    component must keep its initial and safety guarantees. Only violations
-    forced from every initial state are detected."""
-    return chase_cps.is_well_separated(contract.build(), with_guarantees=with_guarantees,
-                                       core=core, timeout=timeout).to_dict()
+def accepts(contract: ContractSpec, environment: str, timeout: float = 300,
+            backend: Backend = "auto", context: list[str] | None = None) -> dict:
+    """Does the contract accept the environment (an LTL formula over the
+    variables of the contract), i.e. environment -> A?
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.accepts(contract.build(), environment, backend, context=context,
+                             timeout=timeout).to_dict()
 
 
 @tool
-def unrealizable_core(contract: ContractSpec, timeout: float = 300) -> dict:
-    """A minimal set of guarantees that is unrealizable under all the
-    assumptions: removing any of them makes the contract realizable. status
-    is found with core (the contract with those guarantees), none when the
-    contract is realizable, or unknown with the reason. Needs slugs."""
-    return chase_cps.unrealizable_core(contract.build(), timeout=timeout).to_dict()
+def remove_redundant(contract: ContractSpec, timeout: float = 60,
+                     backend: Backend = "auto", context: list[str] | None = None) -> dict:
+    """Drop the assumptions implied by the other assumptions, and the
+    guarantees implied by the assumptions and the other guarantees.
+    Returns the contract and the terms removed; terms whose check did not
+    finish are kept and listed in `unknown`.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.remove_redundant(contract.build(), backend, context=context,
+                                      timeout=timeout).to_dict()
+
+
+# 2. Queries on formulas (validity, satisfiability) ---------------------------
+
+@tool
+def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 300,
+            backend: Backend = "auto", context: list[str] | None = None) -> dict:
+    """On formulas: validity. Is the LTL formula phi -> psi valid, i.e. true
+    for every behavior? Returns valid, or invalid with a counterexample trace
+    satisfying phi and violating psi.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.implies(phi, psi, _variables(variables), backend, context=context,
+                             timeout=timeout).to_dict()
+
+
+@tool
+def is_satisfiable(formula: str, variables: dict[str, VarType], core: bool = False,
+                   timeout: float = 300, backend: Backend = "auto",
+                   context: list[str] | None = None) -> dict:
+    """On formulas: satisfiability. Does some behavior satisfy the LTL formula?
+    sat with a witness trace, or unsat; with core, the conjuncts of the
+    formula that cannot hold together. This is not the satisfaction of a
+    contract by a component, which is implements.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.is_satisfiable(formula, _variables(variables), backend, core=core,
+                                    context=context, timeout=timeout).to_dict()
 
 
 @tool
 def unsat_core(contract: ContractSpec | None = None, formulas: list[str] | None = None,
                variables: dict[str, VarType] | None = None, timeout: float = 300,
                backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """A minimal set of terms that cannot hold together. Give a contract (its
+    """On formulas: a minimal set of terms that cannot hold together. Give a contract (its
     assumptions and guarantees, A & G, are searched: the core says whether
     the assumptions contradict each other, the guarantees do, or the
     guarantees cannot hold when the assumptions do), or formulas with their
@@ -364,59 +381,63 @@ def unsat_core(contract: ContractSpec | None = None, formulas: list[str] | None 
                                 timeout=timeout).to_dict()
 
 
+# 3. GR(1) synthesis, with slugs ----------------------------------------------
+
+@tool
+def is_realizable(contract: ContractSpec, core: bool = False, timeout: float = 300) -> dict:
+    """GR(1) synthesis (slugs): realizability. Can a component choose its
+    outputs so that the guarantees hold for every environment satisfying the
+    assumptions? realizable, or unrealizable with the counter-strategy of the
+    environment; with core, also the unrealizable core (see
+    unrealizable_core). Needs slugs; the formulas must be in the GR(1)
+    fragment."""
+    return chase_cps.is_realizable(contract.build(), core=core, timeout=timeout).to_dict()
+
+
 @tool
 def synthesize(contract: ContractSpec, timeout: float = 300) -> dict:
-    """GR(1) synthesis with slugs: the controller (an explicit strategy) when
-    the contract is realizable, or the counter-strategy of the environment.
+    """GR(1) synthesis (slugs): the controller (an explicit strategy) when the
+    contract is realizable, or the counter-strategy of the environment.
     Needs slugs; the formulas must be in the GR(1) fragment."""
     return chase_cps.synthesize(contract.build(), timeout=timeout).to_dict()
 
 
 @tool
-def accepts(contract: ContractSpec, environment: str, timeout: float = 300,
-            backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Does the contract accept the environment (an LTL formula over the
-    variables of the contract), i.e. environment -> A?
-    `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.accepts(contract.build(), environment, backend, context=context,
-                             timeout=timeout).to_dict()
+def unrealizable_core(contract: ContractSpec, timeout: float = 300) -> dict:
+    """GR(1) synthesis (slugs): a minimal set of guarantees that is unrealizable
+    under all the assumptions: removing any of them makes the contract
+    realizable. status is found with core (the contract with those
+    guarantees), none when the contract is realizable, or unknown with the
+    reason. Needs slugs."""
+    return chase_cps.unrealizable_core(contract.build(), timeout=timeout).to_dict()
 
 
 @tool
-def implements(implementation: str, contract: ContractSpec, timeout: float = 300,
-               backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Does the implementation (an LTL formula describing the behaviors of a
-    component) implement the contract, i.e. implementation & A -> G?
-    `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.implements(implementation, contract.build(), backend, context=context,
-                                timeout=timeout).to_dict()
-
-
-# LTL formulas ---------------------------------------------------------------
-
-@tool
-def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 300,
-            backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Is the LTL formula phi -> psi valid? Returns valid, or invalid with a
-    counterexample trace satisfying phi and violating psi.
-    `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.implies(phi, psi, _variables(variables), backend, context=context,
-                             timeout=timeout).to_dict()
+def is_well_separated(contract: ContractSpec, with_guarantees: bool = False, core: bool = False,
+                      timeout: float = 300) -> dict:
+    """GR(1) synthesis (slugs): well-separation. Can the component win by
+    forcing the environment to violate its assumptions? separated when it cannot;
+    not_separated with the controller that forces the violation, which means
+    the assumptions are too weak or depend on the outputs; with core, a
+    minimal set of assumptions that causes it. With with_guarantees the
+    component must keep its initial and safety guarantees. Only violations
+    forced from every initial state are detected."""
+    return chase_cps.is_well_separated(contract.build(), with_guarantees=with_guarantees,
+                                       core=core, timeout=timeout).to_dict()
 
 
 @tool
-def is_satisfiable(formula: str, variables: dict[str, VarType], core: bool = False,
-                   timeout: float = 300, backend: Backend = "auto",
-                   context: list[str] | None = None) -> dict:
-    """Is the LTL formula satisfiable? sat with a witness trace, or unsat;
-    with core, the conjuncts of the formula that cannot hold together.
-    `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
-    return chase_cps.is_satisfiable(formula, _variables(variables), backend, core=core,
-                                    context=context, timeout=timeout).to_dict()
+def remove_vacuous(contract: ContractSpec, core: bool = False, timeout: float = 60,
+                   backend: Backend = "auto") -> dict:
+    """GR(1) synthesis: remove the terms whose removal does not change the GR(1)
+    specification (its realizability and controllers), checked with nuXmv:
+    inherent vacuity, Maoz and Shalom 2020. Returns the contract and the
+    removed terms in order, each with its part (assumption or guarantee), its
+    kind (init, safety, justice), and with core the terms that make it
+    vacuous. Unlike remove_redundant, which keeps A -> G, this keeps the
+    synthesis problem."""
+    return chase_cps.remove_vacuous(contract.build(), core=core, backend=backend,
+                                    timeout=timeout).to_dict()
 
 
 # Specifications in the CHASE language ---------------------------------------

@@ -14,32 +14,40 @@ GR(1) synthesis tool (slugs).
 Use the tools of the `chase` MCP server when they are available. Otherwise use
 the Python package `chase_cps` (`pip install chase-cps`):
 
+The tools are in three layers. Keep them apart when you explain a result:
+a failed GR(1) check says that no controller can be synthesized from the
+contract, not that the contract is wrong in general.
+
 | MCP tool | Python |
 |---|---|
-| **Contract operations that build contracts** | |
+| **1. Contract algebra: operations that build contracts** | |
 | `compose`, `conjoin`, `disjoin`, `merge` | `c1.compose(c2)`, `c1.conjoin(c2)`, `c1.disjoin(c2)`, `c1.merge(c2)` |
 | `divide` (quotient), `separate` | `system.divide(part)`, `system.separate(part)` |
 | `imply`, `coimply`, `invert` | `c1.imply(c2)`, `c1.coimply(c2)`, `c.invert()` |
 | `assume`, `ensure` | `c.assume("G F req")`, `c.ensure("G (grant -> X !grant)")` |
 | `saturate`, `simplify` | `c.saturate()`, `c.simplify()` |
-| `remove_redundant`, `remove_vacuous` | `chase_cps.remove_redundant(c)`, `chase_cps.remove_vacuous(c)` |
-| **Contract operations that check contracts** | |
+| **2. Checks on contracts (nuXmv)** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
 | `verify`, `is_compatible`, `is_consistent` | `chase_cps.verify(c)`, `chase_cps.is_compatible(c)`, `chase_cps.is_consistent(c)` |
-| `is_realizable`, `synthesize`, `is_well_separated` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)`, `chase_cps.is_well_separated(c)` |
-| `accepts`, `implements` | `chase_cps.accepts(c, environment)`, `chase_cps.implements(implementation, c)` |
-| **Explanations of a failed check** | |
-| `unsat_core`, `unrealizable_core` | `chase_cps.unsat_core(c)`, `chase_cps.unrealizable_core(c)`; or `core=True` on the checks |
-| **LTL formulas** | |
-| `implies`, `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
+| `implements`, `accepts` | `chase_cps.implements(implementation, c)`, `chase_cps.accepts(c, environment)` |
+| `remove_redundant` | `chase_cps.remove_redundant(c)` |
+| **2. Queries on formulas** | |
+| `implies` (validity), `is_satisfiable` | `chase_cps.implies(phi, psi, variables)`, `chase_cps.is_satisfiable(phi, variables)` |
+| `unsat_core` | `chase_cps.unsat_core(c)`; or `core=True` on the checks |
+| **3. GR(1) synthesis (slugs)** | |
+| `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
+| `unrealizable_core` | `chase_cps.unrealizable_core(c)`; or `core=True` on `is_realizable` |
+| `is_well_separated`, `remove_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.remove_vacuous(c)` |
 | **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 
 The operations that build contracts return a new contract. The checks return
-a status and, when they fail, a counterexample. With `core: true`,
-`is_realizable`, `is_compatible`, `is_consistent`, `is_satisfiable`, and
-`is_well_separated` also return a core: the few terms that cause the
-failure.
+a status and, when they fail, a counterexample. `implies` checks validity
+(true for every behavior); `is_satisfiable` checks that some behavior
+satisfies a formula, which is not the satisfaction of a contract by a
+component (`implements`). With `core: true`, `is_realizable`,
+`is_compatible`, `is_consistent`, `is_satisfiable`, and `is_well_separated`
+also return a core: the few terms that cause the failure.
 
 In Python a contract is built with
 `Contract.from_dict(d)` or `Contract.from_strings(inputs=..., outputs=..., assumptions=..., guarantees=..., name=...)`.

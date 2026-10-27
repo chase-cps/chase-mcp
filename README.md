@@ -11,13 +11,15 @@ the specification. The skill tells the agent how to use these tools.
 
 ## Tools
 
-Contract operations that build contracts (each tool returns a new
-contract):
+The tools are in three layers.
+
+**1. Contract algebra.** The operations that build contracts; each tool
+returns a new contract. They hold for any assume-guarantee contracts.
 
 - **compose**: parallel composition of two or more contracts; variables with
   the same name are connected. With `discharge`, the result keeps the terms
   of the contracts and drops the assumptions discharged by the other
-  contracts.
+  contracts (this uses the checks of layer 2).
 - **conjoin** and **disjoin**: conjunction and disjunction (greatest lower
   bound and least upper bound).
 - **merge**: merging of viewpoints of the same component.
@@ -27,39 +29,46 @@ contract):
   conjunction and disjunction.
 - **invert**: the reciprocal (G, A), the contract seen from its environment.
 - **assume** and **ensure**: add an assumption or a guarantee.
-- **remove_vacuous**: removes the terms whose removal keeps realizability
-  and the controllers (where `remove_redundant` keeps A -> G).
-- **is_well_separated**: whether the component can win by forcing the
-  environment to violate its assumptions, with that strategy and the
-  assumptions that cause it.
-- **unrealizable_core** and **unsat_core**: a minimal set of terms that
-  explains an unrealizable contract, or terms that cannot hold together.
-  `is_realizable`, `is_compatible`, `is_consistent`, and `is_satisfiable`
-  return it with `core`.
 - **saturate**: the equivalent contract (A, A -> G).
 - **simplify**: rewrites the formulas, as the simplify command of
   `logics_tool` (negations moved to the atoms, temporal operators grouped).
-- **remove_redundant**: removes the assumptions and guarantees implied by the
-  other terms of the contract.
 
-Contract operations that check contracts (each tool returns a status and,
-when the check fails, a counterexample):
+**2. Checks.** Each tool returns a status and, when the check fails, a
+counterexample. The checks on contracts reduce to queries on formulas, which
+nuXmv decides. They take a `context`: formulas that every behavior
+satisfies, such as the axiom of an encoding of finite traces.
 
 - **refines**: whether a contract refines another one, and which part fails
   (assumptions or guarantees).
 - **verify**: compatibility and consistency; **is_compatible** (some
   environment satisfies the assumptions) and **is_consistent** (some behavior
   satisfies the contract) check them one at a time.
+- **implements** and **accepts**: whether an implementation satisfies the
+  contract, and whether the contract accepts an environment, both given as
+  LTL formulas.
+- **remove_redundant**: removes the assumptions and guarantees implied by the
+  other terms of the contract.
+- **implies** and **is_satisfiable**, on formulas: validity of an
+  implication, and satisfiability of a formula (some behavior satisfies it;
+  this is not the satisfaction of a contract by a component, which is
+  `implements`).
+- **unsat_core**: a minimal set of terms that cannot hold together;
+  `is_compatible`, `is_consistent`, and `is_satisfiable` return it with
+  `core`.
+
+**3. GR(1) synthesis, with slugs.** These tools are about synthesizing a
+component from a contract in the GR(1) fragment of LTL, not about contracts
+in general.
+
 - **is_realizable**: GR(1) realizability, with the counter-strategy of the
   environment when unrealizable; **synthesize** also builds the controller.
-- **accepts** and **implements**: whether the contract accepts an
-  environment, and whether an implementation implements the contract, both
-  given as LTL formulas.
-
-LTL formulas:
-
-- **implies** and **is_satisfiable**: validity of an implication and
-  satisfiability of a formula.
+- **unrealizable_core**: a minimal set of guarantees that is unrealizable;
+  `is_realizable` returns it with `core`.
+- **is_well_separated**: whether the component can win by forcing the
+  environment to violate its assumptions, with that strategy and the
+  assumptions that cause it.
+- **remove_vacuous**: removes the terms whose removal keeps realizability
+  and the controllers (where `remove_redundant` keeps A -> G).
 
 Specifications:
 
@@ -76,9 +85,10 @@ A contract is given in JSON:
  "guarantees": ["G (req -> F grant)"]}
 ```
 
-Variables are Boolean (`"bool"`) or bounded integers (`[low, high]`). Formulas
-use the standard LTL syntax: `! & | -> <-> G F X U R W`, relations, arithmetic,
-and `x'` for the value of `x` in the next step.
+Variables are Boolean (`"bool"`), bounded integers (`[low, high]`), or reals
+(`"real"`). Formulas use the standard LTL syntax: `! & | -> <-> G F X U R W`,
+relations, arithmetic, numbers such as `20.5`, and `x'` for the value of `x`
+in the next step.
 
 ## Requirements
 

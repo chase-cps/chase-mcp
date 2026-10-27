@@ -1,6 +1,6 @@
 {
   "name": "chase",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Assume-guarantee contracts in LTL with CHASE: the contract algebra, refinement, consistency, compatibility, realizability and synthesis, with counterexamples, and the diagnosis of failures (unsat and unrealizable cores, well-separation, vacuity); real variables.",
   "author": {
     "name": "CHASE developers"
