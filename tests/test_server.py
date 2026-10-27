@@ -117,6 +117,19 @@ def test_server_version():
     assert info.name == "chase" and info.version == chase_mcp.__version__
 
 
+def test_context():
+    # Finite traces encoded with alive: without the axiom, the words where
+    # alive is false from the start satisfy both guarantees.
+    c = {"name": "C", "inputs": {"alive": "bool"}, "outputs": {"a": "bool"},
+         "guarantees": ["G (alive -> a)", "G (alive -> !a)"]}
+    err, r = call("verify", {"contract": c})
+    assert not err and r["status"] == "sat"
+    err, r = call("verify", {"contract": c, "context": ["alive & (alive U G !alive)"]})
+    assert not err and r["status"] == "unsat"
+    err, r = call("verify", {"contract": c, "context": ["G x"]})
+    assert err and "undeclared variables ['x'] in the context" in r
+
+
 def test_algebra_bounds():
     err, meet = call("conjoin", {"contracts": [SPEC, IMPL]})
     assert not err

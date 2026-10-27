@@ -232,12 +232,15 @@ def simplify(contract: ContractSpec, name: str | None = None) -> dict:
 
 @tool
 def remove_redundant(contract: ContractSpec, timeout: float = 60,
-                     backend: Backend = "auto") -> dict:
+                     backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Drop the assumptions implied by the other assumptions, and the
     guarantees implied by the assumptions and the other guarantees.
     Returns the contract and the terms removed; terms whose check did not
-    finish are kept and listed in `unknown`."""
-    return chase_cps.remove_redundant(contract.build(), backend, timeout=timeout).to_dict()
+    finish are kept and listed in `unknown`.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.remove_redundant(contract.build(), backend, context=context,
+                                      timeout=timeout).to_dict()
 
 
 @tool
@@ -257,42 +260,50 @@ def remove_vacuous(contract: ContractSpec, core: bool = False, timeout: float = 
 
 @tool
 def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
-            backend: Backend = "auto") -> dict:
+            backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Does `refined` refine `abstract` (can it replace it)? Checks that the
     assumptions of `abstract` imply those of `refined`, and that the
     guarantees of `refined` imply those of `abstract`. status is valid,
-    invalid (with `failed` and a counterexample trace), or unknown."""
-    return chase_cps.refines(refined.build(), abstract.build(), backend,
+    invalid (with `failed` and a counterexample trace), or unknown.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.refines(refined.build(), abstract.build(), backend, context=context,
                              timeout=timeout).to_dict()
 
 
 @tool
 def verify(contract: ContractSpec, timeout: float = 300,
-           backend: Backend = "auto") -> dict:
+           backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Compatibility and consistency of the contract (the verify command of
     logics_tool): status is sat when both hold; the results of the two checks
-    are in compatible and consistent."""
-    return chase_cps.verify(contract.build(), backend, timeout=timeout).to_dict()
+    are in compatible and consistent.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.verify(contract.build(), backend, context=context, timeout=timeout).to_dict()
 
 
 @tool
 def is_consistent(contract: ContractSpec, core: bool = False, timeout: float = 300,
-                  backend: Backend = "auto") -> dict:
+                  backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Consistency: is there a behavior allowed by the contract (A -> G
     satisfiable)? sat with a witness trace, or unsat when the guarantees
     contradict each other; with core, the guarantees that contradict each
-    other."""
-    return chase_cps.is_consistent(contract.build(), backend, core=core,
+    other.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.is_consistent(contract.build(), backend, core=core, context=context,
                                    timeout=timeout).to_dict()
 
 
 @tool
 def is_compatible(contract: ContractSpec, core: bool = False, timeout: float = 300,
-                  backend: Backend = "auto") -> dict:
+                  backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Compatibility: is there an environment that satisfies the assumptions?
     sat with a witness trace, or unsat when the assumptions contradict each
-    other; with core, the assumptions that contradict each other."""
-    return chase_cps.is_compatible(contract.build(), backend, core=core,
+    other; with core, the assumptions that contradict each other.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.is_compatible(contract.build(), backend, core=core, context=context,
                                    timeout=timeout).to_dict()
 
 
@@ -333,21 +344,23 @@ def unrealizable_core(contract: ContractSpec, timeout: float = 300) -> dict:
 @tool
 def unsat_core(contract: ContractSpec | None = None, formulas: list[str] | None = None,
                variables: dict[str, VarType] | None = None, timeout: float = 300,
-               backend: Backend = "auto") -> dict:
+               backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """A minimal set of terms that cannot hold together. Give a contract (its
     assumptions and guarantees, A & G, are searched: the core says whether
     the assumptions contradict each other, the guarantees do, or the
     guarantees cannot hold when the assumptions do), or formulas with their
     variables. status is found with core, none when they can hold together,
-    or unknown with the reason."""
+    or unknown with the reason.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
     if (contract is None) == (formulas is None):
         raise ValueError("give either a contract or formulas")
     if contract is not None:
-        return chase_cps.unsat_core(contract.build(), backend=backend,
+        return chase_cps.unsat_core(contract.build(), backend=backend, context=context,
                                     timeout=timeout).to_dict()
     if variables is None:
         raise ValueError("formulas need their variables")
-    return chase_cps.unsat_core(formulas, _variables(variables), backend,
+    return chase_cps.unsat_core(formulas, _variables(variables), backend, context=context,
                                 timeout=timeout).to_dict()
 
 
@@ -361,19 +374,23 @@ def synthesize(contract: ContractSpec, timeout: float = 300) -> dict:
 
 @tool
 def accepts(contract: ContractSpec, environment: str, timeout: float = 300,
-            backend: Backend = "auto") -> dict:
+            backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Does the contract accept the environment (an LTL formula over the
-    variables of the contract), i.e. environment -> A?"""
-    return chase_cps.accepts(contract.build(), environment, backend,
+    variables of the contract), i.e. environment -> A?
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.accepts(contract.build(), environment, backend, context=context,
                              timeout=timeout).to_dict()
 
 
 @tool
 def implements(implementation: str, contract: ContractSpec, timeout: float = 300,
-               backend: Backend = "auto") -> dict:
+               backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Does the implementation (an LTL formula describing the behaviors of a
-    component) implement the contract, i.e. implementation & A -> G?"""
-    return chase_cps.implements(implementation, contract.build(), backend,
+    component) implement the contract, i.e. implementation & A -> G?
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.implements(implementation, contract.build(), backend, context=context,
                                 timeout=timeout).to_dict()
 
 
@@ -381,20 +398,25 @@ def implements(implementation: str, contract: ContractSpec, timeout: float = 300
 
 @tool
 def implies(phi: str, psi: str, variables: dict[str, VarType], timeout: float = 300,
-            backend: Backend = "auto") -> dict:
+            backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Is the LTL formula phi -> psi valid? Returns valid, or invalid with a
-    counterexample trace satisfying phi and violating psi."""
-    return chase_cps.implies(phi, psi, _variables(variables), backend,
+    counterexample trace satisfying phi and violating psi.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
+    return chase_cps.implies(phi, psi, _variables(variables), backend, context=context,
                              timeout=timeout).to_dict()
 
 
 @tool
 def is_satisfiable(formula: str, variables: dict[str, VarType], core: bool = False,
-                   timeout: float = 300, backend: Backend = "auto") -> dict:
+                   timeout: float = 300, backend: Backend = "auto",
+                   context: list[str] | None = None) -> dict:
     """Is the LTL formula satisfiable? sat with a witness trace, or unsat;
-    with core, the conjuncts of the formula that cannot hold together."""
+    with core, the conjuncts of the formula that cannot hold together.
+    `context`: formulas that every behavior satisfies (e.g. an axiom of an
+    encoding, a physical law); the behaviors that violate them are left out."""
     return chase_cps.is_satisfiable(formula, _variables(variables), backend, core=core,
-                                    timeout=timeout).to_dict()
+                                    context=context, timeout=timeout).to_dict()
 
 
 # Specifications in the CHASE language ---------------------------------------

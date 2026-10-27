@@ -87,6 +87,13 @@ Unary operators bind tighter than binary ones: `G a -> b` means
 Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 `P`, `NAME`, `CONTRACT`, `integer`. Use `p1`, `ready`, and so on.
 
+A formula that holds for every behavior that can happen at all, and is
+neither an assumption nor a guarantee of a component (a physical law, "one
+tool call at each step", the axiom of an encoding of finite traces), goes in
+`context` of the checks (`verify`, `refines`, `implies`, `unsat_core`, ...).
+Do not write it as an assumption: a behavior that violates an assumption
+satisfies the contract, so `verify` would still find it.
+
 ## Workflow
 
 1. **Write the contracts.** One contract per component, and one for the whole
