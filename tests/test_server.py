@@ -353,6 +353,17 @@ def test_words():
     assert err
 
 
+def test_engines():
+    args = {"phi": "cnt = 254 & G (cnt' = cnt + 1)", "psi": "X (cnt = 0)",
+            "variables": {"cnt": "word[8]"}}
+    err, r = call("implies", {**args, "backend": "nuxmv/bdd"})
+    assert not err and r["status"] == "invalid" and r["backend"] == "nuxmv/bdd"
+    err, r = call("implies", {**args, "backend": "nuxmv/portfolio", "timeout": 60})
+    assert not err and r["status"] == "invalid"
+    err, r = call("implies", {**args, "backend": "nuxmv/sat"})
+    assert err
+
+
 def test_real_variables():
     mode = {"name": "Mode", "inputs": {"kias": "real"}, "outputs": {"wing": "bool"},
             "guarantees": ["G (kias > 40 -> X wing)", "G (kias <= 30.5 -> X !wing)"]}

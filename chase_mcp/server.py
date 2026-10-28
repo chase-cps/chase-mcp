@@ -35,7 +35,8 @@ from chase_mcp import __version__
 
 Word = Annotated[str, Field(pattern=r"^(signed |unsigned )?word\[[1-9][0-9]*\]$")]
 VarType = Union[Literal["bool", "real"], tuple[int, int], Word]
-Backend = Literal["auto", "nuxmv", "nusmv"]
+Backend = Literal["auto", "nuxmv", "nusmv", "nuxmv/ic3", "nuxmv/bdd", "nuxmv/bmc",
+                  "nuxmv/portfolio", "nusmv/bdd", "nusmv/bmc"]
 
 
 class ContractSpec(BaseModel):
@@ -100,6 +101,11 @@ realizable/unrealizable, or unknown with a reason (e.g. a timeout). A failed
 check comes with a counterexample trace: the states of `prefix`, then the
 states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
+
+The back end may name the engine of nuXmv: "nuxmv/ic3" (the default),
+"nuxmv/bdd" (fast when a counterexample needs a long loop, e.g. a counter
+that goes around), "nuxmv/bmc" (counterexamples only), "nuxmv/portfolio"
+(IC3 and BDDs at the same time). After a timeout with IC3, try "nuxmv/bdd".
 """
 
 server = MCPServer(name="chase", instructions=INSTRUCTIONS, version=__version__)

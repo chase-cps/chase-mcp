@@ -147,7 +147,10 @@ satisfies the contract, so `verify` would still find it.
      that violates the system guarantees: strengthen a component guarantee,
      or the system contract asks for too much.
    - `unknown`: the check did not finish (see `reason`). Increase `timeout`,
-     use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges.
+     use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges. After a
+     timeout of IC3 (the default engine), try `backend: "nuxmv/bdd"`: BDDs
+     are fast when a counterexample needs a long loop (a counter that goes
+     around), or `"nuxmv/portfolio"` (IC3 and BDDs at the same time).
 5. **Missing components.** `divide(system, part)` (the quotient) gives the
    contract of the component still to design: the largest contract that,
    composed with `part`, refines `system`. `is_realizable` tells whether it
