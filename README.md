@@ -52,7 +52,9 @@ satisfies, such as the axiom of an encoding of finite traces.
 - **is_receptive**: whether a state machine accepts every input that the
   assumptions allow, with the state and the input it refuses.
 - **remove_redundant**: removes the assumptions and guarantees implied by the
-  other terms of the contract.
+  other terms of the contract. By default it keeps A -> G, for the algebra
+  and the checks; with `synth` it keeps realizability and the controllers,
+  for synthesis (the terms redundant in the GR(1) game).
 - **implies** and **is_satisfiable**, on formulas: validity of an
   implication, and satisfiability of a formula (some behavior satisfies it;
   this is not the satisfaction of a contract by a component, which is
@@ -75,9 +77,6 @@ in general.
 - **is_vacuous**: whether the component can win without an output that a
   liveness guarantee asks for (vacuity in synthesis), with that strategy and
   the assumptions that allow it.
-- **remove_vacuous**: removes the terms that are redundant in the GR(1) game,
-  keeping realizability and the controllers (where `remove_redundant` keeps
-  A -> G).
 
 Specifications:
 

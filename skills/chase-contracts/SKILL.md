@@ -39,7 +39,6 @@ contract, not that the contract is wrong in general.
 | `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
 | `unrealizable_core` | `chase_cps.unrealizable_core(c)`; or `core=True` on `is_realizable` |
 | `is_well_separated`, `is_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.is_vacuous(c)` |
-| `remove_vacuous` (redundancy in the GR(1) game) | `chase_cps.remove_vacuous(c)` |
 | **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 
@@ -168,10 +167,9 @@ satisfies the contract, so `verify` would still find it.
      assumptions in the core already make the guarantee hold. The guarantee
      obliges nothing; usually an assumption is too strong (e.g. "the robot
      stops asking on its own" instead of "after a grant").
-   - `remove_vacuous`: drops the terms that are redundant in the GR(1) game
-     (implied by others without changing the synthesis problem); report
-     them, they often show a misunderstanding. This is redundancy, not the
-     vacuity of `is_vacuous`.
+   - `remove_redundant` with `synth: true`: drops the terms that are
+     redundant in the GR(1) game (implied by others without changing the
+     synthesis problem); report them, they often show a misunderstanding.
    - `synthesize` builds the controller, and `implements` with the
      controller (and `is_receptive`) checks it against other contracts.
 7. **Implementations and environments.** When the user has a component
@@ -202,9 +200,18 @@ satisfies the contract, so `verify` would still find it.
      that C and c1 together (conjunction) refine c2: what must be added to
      the specification c1 to meet c2. It is to conjunction what `divide` is to composition.
      `coimply` is the adjoint of `disjoin`; it is rarely needed.
-10. **Clean up.** `remove_redundant` drops the terms implied by the others
-   (keeping A -> G); `remove_vacuous` keeps realizability instead;
-   `simplify` rewrites the formulas into a shorter equivalent form.
+10. **Clean up.** `remove_redundant` drops the terms implied by the others.
+   Choose `synth` by what the contract is for next:
+
+   | Next | `synth` | Keeps |
+   |---|---|---|
+   | algebra and checks (compose, refines, verify, ...) | false (default) | A -> G |
+   | synthesis (is_realizable, synthesize, ...) | true | realizability and the controllers |
+
+   The two differ only when the assumptions are wrong (unsatisfiable, or
+   constraining the outputs); then each one can change what the other
+   keeps. If the contract is for both, or you are not sure, do not remove
+   anything. `simplify` rewrites the formulas into a shorter equivalent form.
    `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
    user the behaviors a contract allows; the other operations saturate their
    operands themselves.
@@ -221,7 +228,7 @@ assumptions.
 ## Realizability
 
 `is_realizable`, `synthesize`, `is_well_separated`, `is_vacuous`,
-`unrealizable_core`, and `remove_vacuous` need formulas in the GR(1) fragment: initial conditions
+`unrealizable_core`, and `remove_redundant` with `synth` need formulas in the GR(1) fragment: initial conditions
 without temporal operators, safety `G (...)` over the current and next
 values (`x'` or `X x`), and liveness `G F (...)`. In addition, the initial
 assumptions can only read inputs, and the safety assumptions can only read

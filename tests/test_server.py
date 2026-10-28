@@ -43,7 +43,7 @@ def test_tools_are_listed():
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
             "accepts", "remove_redundant", "read_spec", "write_spec", "imply", "coimply",
-            "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated", "remove_vacuous",
+            "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
             "is_vacuous", "is_receptive"} == asyncio.run(run())
 
 
@@ -315,13 +315,22 @@ def test_well_separation():
     assert not err and r["status"] == "separated"
 
 
-def test_remove_vacuous():
+def test_remove_redundant_for_synthesis():
     c = {"name": "A", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
          "assumptions": ["G F req"], "guarantees": ["G (req -> grant)", "G F grant"]}
-    err, r = call("remove_vacuous", {"contract": c, "core": True})
+    err, r = call("remove_redundant", {"contract": c, "synth": True, "core": True})
     assert not err and r["contract"]["guarantees"] == ["G (req -> grant)"]
     assert r["removed"] == [{"term": "G F grant", "part": "guarantee", "kind": "justice",
                              "core": ["G F req", "G (req -> grant)"]}]
+    # the two differ when the assumptions are wrong
+    bad = {"name": "Bad", "inputs": {"x": "bool"}, "outputs": {"g": "bool"},
+           "assumptions": ["G F (x & !x)"], "guarantees": ["G g", "G !g"]}
+    err, r = call("remove_redundant", {"contract": bad})
+    assert not err and r["contract"]["guarantees"] == []
+    err, r = call("remove_redundant", {"contract": bad, "synth": True})
+    assert not err and r["contract"]["guarantees"] == ["G g", "G !g"]
+    err, r = call("remove_redundant", {"contract": c, "synth": True, "context": ["G req"]})
+    assert err
 
 
 def test_real_variables():

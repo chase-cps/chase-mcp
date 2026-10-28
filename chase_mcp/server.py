@@ -81,8 +81,9 @@ The tools are in three layers:
    (SMV, a state machine in JSON, or a synthesized controller), and
    is_receptive checks that a machine does not refuse the inputs.
 3. GR(1) synthesis with slugs (is_realizable, synthesize, unrealizable_core,
-   is_well_separated, is_vacuous, remove_vacuous): only for contracts in the
-   GR(1) fragment of LTL, about whether a component can be synthesized.
+   is_well_separated, is_vacuous): only for contracts in the GR(1) fragment
+   of LTL, about whether a component can be synthesized. Before synthesis,
+   remove_redundant takes synth: true, which keeps realizability.
 
 The check tools return a status:
 valid/invalid for implications, sat/unsat for satisfiability,
@@ -393,16 +394,26 @@ def is_receptive(contract: ContractSpec, smv: str | None = None, machine: dict |
 
 
 @tool
-def remove_redundant(contract: ContractSpec, timeout: float = 60,
-                     backend: Backend = "auto", context: list[str] | None = None) -> dict:
+def remove_redundant(contract: ContractSpec, synth: bool = False, core: bool = False,
+                     timeout: float = 60, backend: Backend = "auto",
+                     context: list[str] | None = None) -> dict:
     """Drop the assumptions implied by the other assumptions, and the
     guarantees implied by the assumptions and the other guarantees.
-    Returns the contract and the terms removed; terms whose check did not
-    finish are kept and listed in `unknown`.
+    Returns the contract and the terms removed (`removed`: each term with
+    its part, and with core the terms that imply it); terms whose check did
+    not finish are kept and listed in `unknown`.
+    Choose `synth` by what the contract is for next. false (the default)
+    keeps A -> G: before the algebra and the checks (compose, refines,
+    verify, ...). true keeps realizability and the controllers: before
+    synthesis (is_realizable, synthesize, is_well_separated, is_vacuous);
+    a term is dropped only when it is implied in the GR(1) game, and each
+    removed term has its kind (init, safety, justice). With synth the terms
+    must be GR(1), and there is no context. The two differ only when the
+    assumptions are wrong (unsatisfiable, or constraining the outputs).
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
     return chase_cps.remove_redundant(contract.build(), backend, context=context,
-                                      timeout=timeout).to_dict()
+                                      synth=synth, core=core, timeout=timeout).to_dict()
 
 
 # 2. Queries on formulas (validity, satisfiability) ---------------------------
@@ -516,21 +527,6 @@ def is_vacuous(contract: ContractSpec, outputs: list[str] | None = None, core: b
     positively in a liveness guarantee (G F ...)."""
     return chase_cps.is_vacuous(contract.build(), outputs=outputs, core=core,
                                 timeout=timeout).to_dict()
-
-
-@tool
-def remove_vacuous(contract: ContractSpec, core: bool = False, timeout: float = 60,
-                   backend: Backend = "auto") -> dict:
-    """GR(1) synthesis: redundancy in the GR(1) game. Remove the terms
-    implied by others in a way that does not change the GR(1) specification
-    (its realizability and controllers), checked with nuXmv (the inherent
-    vacuity of Maoz and Shalom 2020). Returns the contract and the removed
-    terms in order, each with its part (assumption or guarantee), its kind
-    (init, safety, justice), and with core the terms that imply it. Unlike
-    remove_redundant, which keeps A -> G, this keeps the synthesis problem.
-    Vacuity in the sense of a guarantee that obliges nothing is is_vacuous."""
-    return chase_cps.remove_vacuous(contract.build(), core=core, backend=backend,
-                                    timeout=timeout).to_dict()
 
 
 # Specifications in the CHASE language ---------------------------------------

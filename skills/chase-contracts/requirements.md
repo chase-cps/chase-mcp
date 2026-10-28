@@ -118,11 +118,11 @@ they differ.
 ## 6. Check
 
 Then follow the workflow of SKILL.md: `verify` with `core: true` on every
-contract, and before synthesis `is_realizable`, `is_well_separated`, and
-`remove_vacuous`. Report a core by the numbers of the requirements in it,
+contract, and before synthesis `is_realizable`, `is_well_separated`,
+`is_vacuous`, and `remove_redundant` with `synth: true`. Report a core by the numbers of the requirements in it,
 with their text, not only the formulas. A core has the status `found` (the
 terms are in `core`), `none` (the check passes, there is nothing to
-explain), or `unknown` (see `reason`). `remove_vacuous` does not report
+explain), or `unknown` (see `reason`). `remove_redundant` does not report
 assumptions that a component does not need; see section 4.
 
 Common mistakes:
@@ -133,5 +133,5 @@ Common mistakes:
   cannot react to what the component does in the same step.
 - Contradictory assumptions: every refinement then holds. Check that the
   composite is still compatible.
-- `G (p -> q)` where p never happens: the requirement is vacuous;
-  `remove_vacuous` reports it.
+- `G (p -> q)` where the assumptions say that p never happens: the
+  requirement obliges nothing; `remove_redundant` reports it.
