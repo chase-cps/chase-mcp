@@ -93,10 +93,12 @@ A contract is given in JSON:
  "guarantees": ["G (req -> F grant)"]}
 ```
 
-Variables are Boolean (`"bool"`), bounded integers (`[low, high]`), or reals
-(`"real"`). Formulas use the standard LTL syntax: `! & | -> <-> G F X U R W`,
-relations, arithmetic, numbers such as `20.5`, and `x'` for the value of `x`
-in the next step.
+Variables are Boolean (`"bool"`), bounded integers (`[low, high]`), reals
+(`"real"`), or words (`"word[8]"`, `"signed word[8]"`: bit vectors whose
+arithmetic wraps around). Formulas use the standard LTL syntax:
+`! & | -> <-> G F X U R W`, relations, arithmetic, numbers such as `20.5`, and
+`x'` for the value of `x` in the next step; on words also `x[7:0]`, `x[3]`,
+`::`, `<< >>`, `mod`, and the bitwise `& | xor !`.
 
 ## Requirements
 

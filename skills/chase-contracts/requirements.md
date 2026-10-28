@@ -23,6 +23,10 @@ List every signal the requirements talk about, in a table:
   low"). Use a bounded integer when they count or compare discrete values
   (a mode, a number of robots), and always give the range: an integer
   without a range is 0..16 in the CHASE language. Keep the ranges small.
+- Use a word (`"word[8]"`, `"signed word[8]"`) for a register or a bus of
+  a circuit: its arithmetic wraps around (255 + 1 = 0 in 8 bits), and its
+  bits (`x[3]`, `x[7:4]`) can be read. Both sides of an operation have the
+  same width; slugs does not take words.
 - Use `real` for physical quantities (a speed, a pressure) compared with
   thresholds. Compare them with constants where the requirement allows it
   (`kias > 40` rather than `kias > limit`): then synthesis works too.

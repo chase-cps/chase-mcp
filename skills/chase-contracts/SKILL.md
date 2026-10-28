@@ -69,8 +69,9 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
 ```
 
 - Inputs are controlled by the environment, outputs by the component.
-  Variables are `"bool"`, bounded integers `[low, high]`, or `"real"`; keep
-  the integer ranges small, the checks get slower with large ranges.
+  Variables are `"bool"`, bounded integers `[low, high]`, `"real"`, or words
+  `"word[n]"` (`"signed word[n]"`); keep the integer ranges small, the
+  checks get slower with large ranges.
 - Real variables: when they are only compared with constants
   (`kias > 40`) or with each other (`kias = kgs`), every check works,
   synthesis too, and the result says `reals: "regions"`. With arithmetic between them (`ia - ib > T`) the model

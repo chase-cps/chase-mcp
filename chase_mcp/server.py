@@ -8,10 +8,12 @@ A contract is given as JSON::
      "assumptions": ["G F !req"],
      "guarantees": ["G (req -> F grant)"]}
 
-Variables are Boolean ("bool"), bounded integers [low, high], or reals
-("real"). Formulas use the standard LTL syntax: ! & | -> <-> G F X U R W,
-relations (= != < <= > >=), arithmetic (+ - * /), numbers such as 20.5, and
-x' for the value of x in the next step.
+Variables are Boolean ("bool"), bounded integers [low, high], reals
+("real"), or words ("word[8]", "signed word[8]": bit vectors whose arithmetic
+wraps around). Formulas use the standard LTL syntax: ! & | -> <-> G F X U R
+W, relations (= != < <= > >=), arithmetic (+ - * /), numbers such as 20.5,
+and x' for the value of x in the next step; on words also x[7:0], x[3], ::,
+<< >>, mod, and the bitwise & | xor !.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from __future__ import annotations
 import functools
 import os
 import sys
-from typing import Literal, Union
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +33,8 @@ from mcp.types import ToolAnnotations
 
 from chase_mcp import __version__
 
-VarType = Union[Literal["bool", "real"], tuple[int, int]]
+Word = Annotated[str, Field(pattern=r"^(signed |unsigned )?word\[[1-9][0-9]*\]$")]
+VarType = Union[Literal["bool", "real"], tuple[int, int], Word]
 Backend = Literal["auto", "nuxmv", "nusmv"]
 
 
@@ -39,9 +42,11 @@ class ContractSpec(BaseModel):
     """An assume-guarantee contract over LTL."""
     name: str = Field("C", description="Contract name (letters, digits, _)")
     inputs: dict[str, VarType] = Field(default_factory=dict,
-                                       description='Input variables: "bool", [low, high], or "real"')
+                                       description='Input variables: "bool", [low, high], "real", '
+                                                   'or "word[n]" ("signed word[n]")')
     outputs: dict[str, VarType] = Field(default_factory=dict,
-                                        description='Output variables: "bool", [low, high], or "real"')
+                                        description='Output variables: "bool", [low, high], "real", '
+                                                    'or "word[n]" ("signed word[n]")')
     assumptions: list[str] = Field(default_factory=list,
                                    description="LTL formulas, read as a conjunction")
     guarantees: list[str] = Field(default_factory=list,
@@ -63,7 +68,11 @@ assumptions A. Contracts are read as saturated: the behaviors allowed are those
 of A -> G. Inputs are controlled by the environment, outputs by the component.
 
 Formulas: ! & | -> <-> G F X U R W, true, false, relations = != < <= > >=,
-arithmetic + - * /, and x' (the value of x in the next step). Unary operators
+arithmetic + - * /, and x' (the value of x in the next step). Words
+("word[8]", "signed word[8]"): bits x[7:0] and x[3], concatenation ::, shifts
+<< >>, mod, bitwise & | xor ! (parenthesize them in a relation:
+(x & y) = 0); both operands have the same width and signedness, and the
+arithmetic wraps around. slugs does not take words. Unary operators
 bind tighter than binary ones: G a -> b is (G a) -> b; write G (a -> b).
 Names cannot be keywords (G F X U R W true false, and CHASE keywords such as
 P, NAME, CONTRACT).
@@ -118,7 +127,7 @@ def tool(fn):
 
 
 def _variables(variables: dict[str, VarType]) -> dict:
-    return {k: (v if v in ("bool", "real") else tuple(v)) for k, v in variables.items()}
+    return {k: (v if isinstance(v, str) else tuple(v)) for k, v in variables.items()}
 
 
 def _fold(contracts: list[ContractSpec], operation: str, name: str | None) -> dict:

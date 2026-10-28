@@ -333,6 +333,26 @@ def test_remove_redundant_for_synthesis():
     assert err
 
 
+def test_words():
+    inc = {"name": "Inc", "inputs": {"a": "word[8]"}, "outputs": {"b": "word[8]"},
+           "guarantees": ["G (b = a + 1)"]}
+    err, r = call("implies", {"phi": "a = 255 & b = a + 1", "psi": "b = 0",
+                              "variables": {"a": "word[8]", "b": "word[8]"}})
+    assert not err and r["status"] == "valid"
+    spec = {"name": "Odd", "inputs": {"a": "word[8]"}, "outputs": {"b": "word[8]"},
+            "assumptions": ["G (a[0] = 0)"], "guarantees": ["G (b[0] = 1)"]}
+    err, r = call("refines", {"refined": inc, "abstract": spec})
+    assert not err and r["status"] == "valid"
+    err, r = call("compose", {"contracts": [inc, {"name": "Dbl", "inputs": {"b": "word[8]"},
+                                                  "outputs": {"c": "word[8]"},
+                                                  "guarantees": ["G (c = b << 1)"]}]})
+    assert not err and r["outputs"] == {"b": "word[8]", "c": "word[8]"}
+    err, r = call("verify", {"contract": {**inc, "guarantees": ["G (b = a :: a)"]}})
+    assert err and "same width" in r
+    err, r = call("verify", {"contract": {**inc, "inputs": {"a": "word[x]"}}})
+    assert err
+
+
 def test_real_variables():
     mode = {"name": "Mode", "inputs": {"kias": "real"}, "outputs": {"wing": "bool"},
             "guarantees": ["G (kias > 40 -> X wing)", "G (kias <= 30.5 -> X !wing)"]}
