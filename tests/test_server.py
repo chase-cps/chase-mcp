@@ -42,7 +42,7 @@ def test_tools_are_listed():
     assert {"compose", "conjoin", "disjoin", "merge", "divide", "separate", "saturate",
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
-            "accepts", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "imply", "coimply",
+            "accepts", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
             "is_vacuous", "is_receptive"} == asyncio.run(run())
 
@@ -375,6 +375,51 @@ def test_sva():
     assert not err and not back["skipped"]
     err, msg = call("parse_sva", {})
     assert err
+
+
+BUF1 = """
+module buf1 #(parameter W = 4) (input clk, input reset_i, input v_i, input [W-1:0] data_i,
+                                output ready_and_o, output v_o, output [W-1:0] data_o,
+                                input yumi_i);
+  logic full;
+  logic [W-1:0] d;
+  assign ready_and_o = !full;
+  assign v_o = full;
+  assign data_o = d;
+  always_ff @(posedge clk) begin
+    if (reset_i) full <= 1'b0;
+    else if (full) full <= !yumi_i;
+    else full <= v_i;
+    if (v_i && !full) d <= data_i;
+  end
+endmodule
+"""
+
+
+def test_rtl():
+    from chase_cps.rtl import yosys
+    if yosys() is None:
+        pytest.skip("Yosys not installed")
+    rtl = {"top": "buf1", "sources": {"buf1.sv": BUF1}, "reset": "reset_i",
+           "names": {"ready_and_o": "ready_o"}}
+    err, ports = call("rtl_ports", {"rtl": rtl})
+    assert not err, ports
+    assert ports["inputs"] == {"v_i": "bool", "data_i": "word[4]", "yumi_i": "bool"}
+    assert ports["outputs"] == {"ready_o": "bool", "v_o": "bool", "data_o": "word[4]"}
+    assert ports["reset"] == "reset_i" and ports["start"] == 1
+    slot = {"name": "Slot", "inputs": ports["inputs"], "outputs": ports["outputs"],
+            "assumptions": ["G (yumi_i -> v_o)"],
+            "guarantees": ["G (v_o & !yumi_i -> X v_o)", "G (v_o -> !ready_o)"]}
+    err, r = call("implements", {"contract": slot, "rtl": rtl})
+    assert not err and r["status"] == "valid", r
+    err, r = call("implements", {"contract": {**slot, "guarantees": ["G ready_o"]}, "rtl": rtl})
+    assert not err and r["status"] == "invalid"
+    err, r = call("is_receptive", {"contract": slot, "rtl": rtl})
+    assert not err and r["status"] == "receptive"
+    err, msg = call("implements", {"contract": slot, "rtl": {"top": "buf1"}})
+    assert err and "files or the sources" in msg
+    err, msg = call("implements", {"contract": slot, "rtl": rtl, "smv": "MODULE main"})
+    assert err and "give one of" in msg
 
 
 def test_engines():

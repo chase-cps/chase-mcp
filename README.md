@@ -86,6 +86,9 @@ Specifications:
   property` statements of SystemVerilog as a contract (the statements not
   read are listed with the reason), and write a contract as a checker module
   for any tool that reads SVA.
+- **rtl_ports**: the ports of a Verilog or SystemVerilog module, read with
+  Yosys; `implements`, `accepts`, and `is_receptive` take such a module
+  (`rtl`) as the state machine.
 
 A contract is given in JSON:
 

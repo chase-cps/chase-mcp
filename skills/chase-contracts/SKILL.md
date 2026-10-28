@@ -43,6 +43,7 @@ contract, not that the contract is wrong in general.
 | `parse_spec`, `to_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 | **SystemVerilog Assertions** | |
 | `parse_sva`, `to_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
+| `rtl_ports`; `rtl` in `implements`, `accepts`, `is_receptive` | `chase_cps.Model.from_rtl(files, top)` |
 
 The operations that build contracts return a new contract. The checks return
 a status and, when they fail, a counterexample. `implies` checks validity
@@ -260,6 +261,13 @@ is checked from cycle `from_cycle`. The widths are those of Verilog:
 `a |-> ##[1:$] b` is not read: in an assert it never fails; it means
 `a |-> s_eventually b` when liveness is meant. `to_sva` gives the
 checker module to run in a formal tool or a simulator; it does not run them.
+
+RTL: `implements`, `accepts`, and `is_receptive` take a Verilog or
+SystemVerilog module (`rtl`: `top`, and `files` or `sources`). Call
+`rtl_ports` first: the contract uses its port names and types (a 1-bit port
+is a Boolean, a wider one a word; `names` renames ports). With `reset`, the
+reset is not an input, and the contracts are checked from the step after the
+reset. The checks are those of nuXmv: they suit small and medium modules.
 
 ## Examples
 

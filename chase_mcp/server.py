@@ -104,7 +104,9 @@ guarantee to change.
 
 SystemVerilog: parse_sva reads assume/assert property statements as a contract
 (the statements not read are listed with the reason), to_sva writes a
-contract as a checker module for any tool that reads SVA.
+contract as a checker module for any tool that reads SVA. implements,
+accepts, and is_receptive take RTL (`rtl`: a Verilog or SystemVerilog
+module); rtl_ports gives its ports, the variables of the contracts.
 
 The back end may name the engine of nuXmv: by default IC3 and BDDs run at
 the same time ("nuxmv/portfolio"); "nuxmv/ic3", "nuxmv/bdd" (fast when a
@@ -322,6 +324,46 @@ def is_compatible(contract: ContractSpec, core: bool = False, timeout: float = 3
                                    timeout=timeout).to_dict()
 
 
+class RTLSpec(BaseModel):
+    """A Verilog or SystemVerilog module, read as a state machine with Yosys
+    (chase-cps[rtl]): one step is one cycle of the clock, a 1-bit port is a
+    Boolean, a wider one a word."""
+    top: str = Field(description="The top module")
+    files: list[str] = Field(default_factory=list,
+                             description="Paths of the source files (Verilog or SystemVerilog)")
+    sources: dict[str, str] = Field(default_factory=dict,
+                                    description='Source texts by file name, '
+                                                '{"fifo.sv": "module fifo ..."}')
+    parameters: dict[str, int] = Field(default_factory=dict,
+                                       description="Parameters of the top module")
+    defines: dict[str, Union[int, str]] = Field(default_factory=dict, description="Macros")
+    reset: str | None = Field(None, description='The reset input, "rst" or "!rst_n" '
+                              "(active low): it holds in the first step, and the contracts "
+                              "are checked from the step after it; it is then not an input")
+    names: dict[str, str] = Field(default_factory=dict,
+                                  description='Ports renamed as the variables of the '
+                                              'contracts, {"ready_and_o": "ready_o"}')
+    clocks: list[str] | None = Field(None, description="The clock inputs (default: clk, "
+                                     "clk_i, clock), left out")
+
+    def build(self):
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="chase_mcp_rtl_") as tmp:
+            files = list(self.files)
+            for name, text in self.sources.items():
+                path = os.path.join(tmp, os.path.basename(name))
+                with open(path, "w") as f:
+                    f.write(text)
+                files.append(path)
+            if not files:
+                raise ValueError("give the files or the sources of the RTL")
+            options = {"parameters": self.parameters, "defines": self.defines,
+                       "reset": self.reset, "names": self.names}
+            if self.clocks is not None:
+                options["clocks"] = self.clocks
+            return chase_cps.Model.from_rtl(files, self.top, **options)
+
+
 MACHINE_DOC = """The state machine is given as one of: `smv`, a program in SMV (the input
     language of nuXmv: MODULE main with VAR/IVAR, INIT, TRANS..., no
     specification) that declares the variables of the contract; `machine`, a
@@ -330,7 +372,8 @@ MACHINE_DOC = """The state machine is given as one of: `smv`, a program in SMV (
     state, the machine takes a transition whose `when` (a formula over the
     variables) holds, sets the outputs of that step, and moves to `to`; or
     `controller`, the controller returned by synthesize, with the contract it
-    was synthesized from in `synthesized_from` (default: the contract)."""
+    was synthesized from in `synthesized_from` (default: the contract); or
+    `rtl`, a Verilog or SystemVerilog module (see rtl_ports for its ports)."""
 
 
 def _machine_doc(fn):
@@ -339,10 +382,12 @@ def _machine_doc(fn):
     return fn
 
 
-def _model(smv, machine, controller, synthesized_from, contract: Contract):
-    given = [x for x in (smv, machine, controller) if x is not None]
+def _model(smv, machine, controller, synthesized_from, contract: Contract, rtl=None):
+    given = [x for x in (smv, machine, controller, rtl) if x is not None]
     if len(given) > 1:
-        raise ValueError("give one of smv, machine, and controller")
+        raise ValueError("give one of smv, machine, controller, and rtl")
+    if rtl is not None:
+        return rtl.build()
     if smv is not None:
         return chase_cps.Model.from_smv(smv)
     if machine is not None:
@@ -358,7 +403,7 @@ def _model(smv, machine, controller, synthesized_from, contract: Contract):
 def implements(contract: ContractSpec, implementation: str | None = None,
                smv: str | None = None, machine: dict | None = None,
                controller: dict | None = None, synthesized_from: ContractSpec | None = None,
-               timeout: float = 300, backend: Backend = "auto",
+               rtl: RTLSpec | None = None, timeout: float = 300, backend: Backend = "auto",
                context: list[str] | None = None) -> dict:
     """Does the implementation implement the contract? The implementation is
     an LTL formula (`implementation`): implementation & A -> G must be valid;
@@ -368,7 +413,7 @@ def implements(contract: ContractSpec, implementation: str | None = None,
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
     c = contract.build()
-    m = _model(smv, machine, controller, synthesized_from, c)
+    m = _model(smv, machine, controller, synthesized_from, c, rtl)
     if (m is None) == (implementation is None):
         raise ValueError("give the implementation as a formula or as a state machine")
     return chase_cps.implements(m if m is not None else implementation, c, backend,
@@ -377,16 +422,16 @@ def implements(contract: ContractSpec, implementation: str | None = None,
 
 @tool
 def accepts(contract: ContractSpec, environment: str | None = None, smv: str | None = None,
-            machine: dict | None = None, timeout: float = 300, backend: Backend = "auto",
-            context: list[str] | None = None) -> dict:
+            machine: dict | None = None, rtl: RTLSpec | None = None, timeout: float = 300,
+            backend: Backend = "auto", context: list[str] | None = None) -> dict:
     """Does the contract accept the environment? The environment is an LTL
     formula over the variables of the contract (`environment`):
-    environment -> A must be valid; or a state machine (`smv` or `machine`,
-    as for implements) every behavior of which must satisfy A.
+    environment -> A must be valid; or a state machine (`smv`, `machine`, or
+    `rtl`, as for implements) every behavior of which must satisfy A.
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
     c = contract.build()
-    m = _model(smv, machine, None, None, c)
+    m = _model(smv, machine, None, None, c, rtl)
     if (m is None) == (environment is None):
         raise ValueError("give the environment as a formula or as a state machine")
     return chase_cps.accepts(c, m if m is not None else environment, backend,
@@ -397,8 +442,8 @@ def accepts(contract: ContractSpec, environment: str | None = None, smv: str | N
 @_machine_doc
 def is_receptive(contract: ContractSpec, smv: str | None = None, machine: dict | None = None,
                  controller: dict | None = None,
-                 synthesized_from: ContractSpec | None = None, timeout: float = 300,
-                 backend: Backend = "auto") -> dict:
+                 synthesized_from: ContractSpec | None = None, rtl: RTLSpec | None = None,
+                 timeout: float = 300, backend: Backend = "auto") -> dict:
     """Does the state machine accept every input that the assumptions of the
     contract allow? A machine that refuses an input has no behavior with it,
     so implements may hold only because it blocks the inputs. receptive, or
@@ -406,9 +451,9 @@ def is_receptive(contract: ContractSpec, smv: str | None = None, machine: dict |
     input (details: state and input). Uses the initial and safety
     assumptions; the inputs must be Boolean or integer ranges."""
     c = contract.build()
-    m = _model(smv, machine, controller, synthesized_from, c)
+    m = _model(smv, machine, controller, synthesized_from, c, rtl)
     if m is None:
-        raise ValueError("give the state machine: smv, machine, or controller")
+        raise ValueError("give the state machine: smv, machine, controller, or rtl")
     return chase_cps.is_receptive(m, c, backend, timeout=timeout).to_dict()
 
 
@@ -565,6 +610,21 @@ def to_spec(contracts: list[ContractSpec], name: str = "spec") -> str:
     """Write contracts as a specification in the logics language of CHASE,
     which logics_tool and the other CHASE tools read."""
     return chase_cps.to_spec([c.build() for c in contracts], name)
+
+
+@tool
+def rtl_ports(rtl: RTLSpec) -> dict:
+    """The ports of a Verilog or SystemVerilog module read as a state machine:
+    the inputs and the outputs with their types ("bool", "word[n]"), as the
+    variables of a contract checked against it, the reset (not an input when
+    given), and `start`, the step from which the contracts are checked."""
+    m = rtl.build()
+    reset = rtl.names.get((rtl.reset or "").lstrip("!").strip(),
+                          (rtl.reset or "").lstrip("!").strip()) or None
+    inputs = {v: t for v, t in m.variables.items() if v in m.ivars}
+    outputs = {v: t for v, t in m.variables.items() if v not in m.ivars and v != reset}
+    return {"name": m.name, "inputs": inputs, "outputs": outputs, "reset": reset,
+            "start": m.start}
 
 
 # SystemVerilog Assertions ---------------------------------------------------
