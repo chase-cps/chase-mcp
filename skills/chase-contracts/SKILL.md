@@ -157,7 +157,8 @@ satisfies the contract, so `verify` would still find it.
    contract of the component still to design: the largest contract that,
    composed with `part`, refines `system`. `is_realizable` tells whether it
    can be implemented (or gives a counter-strategy of the environment), and
-   `synthesize` builds the controller.
+   `synthesize` builds the controller. Pass `discharge: true` before these:
+   the closed form is not GR(1), the terms often are.
 6. **Before synthesis.** For each component to synthesize:
    - `is_realizable` with `core: true`: if unrealizable, the core names the
      guarantees that conflict, and the counter-strategy shows how the
@@ -190,8 +191,11 @@ satisfies the contract, so `verify` would still find it.
    satisfy the assumptions. An invalid result gives the environment
    behavior that the component does not expect.
 8. **Viewpoints.** Use `merge` for different aspects of the same component
-   (function, timing, safety), and `separate` to remove a viewpoint.
-   Use `conjoin` when several specifications must hold at once, and
+   (function, timing, safety), and `separate` to remove a viewpoint. With
+   `discharge: true`, the merge keeps the terms of the viewpoints (the same
+   contract), as `is_realizable` and `synthesize` need. Each viewpoint then
+   holds under the assumptions of all of them. Use `conjoin` when each
+   specification must hold under its own assumptions, and
    `disjoin` for a contract that either of two specifications satisfies
    (two acceptable variants, such as two operating modes).
 9. **Changing a contract.**

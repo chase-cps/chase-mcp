@@ -72,6 +72,25 @@ def test_compose_then_refine():
     assert not err and r["status"] == "valid"
 
 
+def test_merge_and_divide_with_discharge():
+    grant = {"name": "Grant", "inputs": {"r": "bool"}, "outputs": {"g": "bool"},
+             "guarantees": ["G F (g | !r)"]}
+    lock = {"name": "Lock", "inputs": {"r": "bool", "l": "bool"}, "outputs": {"g": "bool"},
+            "assumptions": ["G (l -> r)"], "guarantees": ["G (l -> g)"]}
+    err, m = call("merge", {"contracts": [grant, lock], "discharge": True})
+    assert not err and m["assumptions"] == ["G (l -> r)"]
+    assert sorted(m["guarantees"]) == ["G (l -> g)", "G F (g | !r)"]
+    err, r = call("is_realizable", {"contract": m})
+    assert not err and r["status"] == "realizable"
+    system = {"name": "Sys", "inputs": {"a": "bool"}, "outputs": {"b": "bool", "c": "bool"},
+              "assumptions": ["G a"], "guarantees": ["G c"]}
+    part = {"name": "Part", "inputs": {"a": "bool"}, "outputs": {"b": "bool"},
+            "assumptions": ["G a"], "guarantees": ["G (a -> b)"]}
+    err, q = call("divide", {"system": system, "part": part, "discharge": True})
+    assert not err and sorted(q["assumptions"]) == ["G (a -> b)", "G a"]
+    assert q["guarantees"] == ["G c"]
+
+
 def test_consistency_compatibility_and_implies():
     err, r = call("is_consistent", {"contract": SPEC})
     assert not err and r["status"] == "sat"

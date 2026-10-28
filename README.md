@@ -22,8 +22,10 @@ returns a new contract. They hold for any assume-guarantee contracts.
   contracts (this uses the checks of layer 2).
 - **conjoin** and **disjoin**: conjunction and disjunction (greatest lower
   bound and least upper bound).
-- **merge**: merging of viewpoints of the same component.
-- **divide**: the quotient, i.e. the contract of a missing component.
+- **merge**: merging of viewpoints of the same component. With `discharge`,
+  the result keeps the terms of the viewpoints (the same contract).
+- **divide**: the quotient, i.e. the contract of a missing component. With
+  `discharge`, the result keeps the terms (the same contract).
 - **separate**: separation, the adjoint of merging.
 - **imply** and **coimply**: implication and coimplication, the adjoints of
   conjunction and disjunction.

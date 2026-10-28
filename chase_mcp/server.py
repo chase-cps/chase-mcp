@@ -195,17 +195,42 @@ def disjoin(contracts: list[ContractSpec], name: str | None = None) -> dict:
 
 
 @tool
-def merge(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def merge(contracts: list[ContractSpec], name: str | None = None, discharge: bool = False,
+          timeout: float = 60, backend: Backend = "auto") -> dict:
     """Merging of two or more viewpoints of the same component (e.g. function
-    and timing): (A1 & A2, (G1 & G2) | !(A1 & A2))."""
-    return _fold(contracts, "merge", name)
+    and timing): (A1 & A2, (G1 & G2) | !(A1 & A2)).
+
+    With discharge, the result keeps the terms of the contracts, (A1 & A2,
+    G1 & G2), which is the same contract, then drops the redundant terms;
+    each test is one model-checking call. Use it before is_realizable or
+    synthesize, which need the terms."""
+    if not discharge:
+        return _fold(contracts, "merge", name)
+    if len(contracts) < 2:
+        raise ValueError("give at least two contracts")
+    result = contracts[0].build()
+    for spec in contracts[1:]:
+        result = result.merge(spec.build(), discharge=True, backend=backend, timeout=timeout)
+    if name:
+        result.name = name
+    return result.to_dict()
 
 
 @tool
-def divide(system: ContractSpec, part: ContractSpec, name: str | None = None) -> dict:
+def divide(system: ContractSpec, part: ContractSpec, name: str | None = None,
+           discharge: bool = False, timeout: float = 60, backend: Backend = "auto") -> dict:
     """The contract of the missing component: the largest contract C such that
-    part composed with C refines system. (A & G', (G & A') | !(A & G'))."""
-    return system.build().divide(part.build(), name).to_dict()
+    part composed with C refines system. (A & G', (G & A') | !(A & G')).
+
+    With discharge, the result keeps the terms: it assumes the assumptions of
+    system and the guarantees of part (under the assumptions of part that
+    system does not give), and guarantees the guarantees of system and the
+    assumptions of part. It is the same contract, then the redundant terms
+    are dropped; each test is one model-checking call."""
+    if not discharge:
+        return system.build().divide(part.build(), name).to_dict()
+    return system.build().divide(part.build(), name, discharge=True, backend=backend,
+                                 timeout=timeout).to_dict()
 
 
 @tool
