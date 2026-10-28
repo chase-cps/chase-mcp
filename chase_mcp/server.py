@@ -102,6 +102,10 @@ check comes with a counterexample trace: the states of `prefix`, then the
 states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
 
+SystemVerilog: read_sva reads assume/assert property statements as a contract
+(the statements not read are listed with the reason), write_sva writes a
+contract as a checker module for any tool that reads SVA.
+
 The back end may name the engine of nuXmv: "nuxmv/ic3" (the default),
 "nuxmv/bdd" (fast when a counterexample needs a long loop, e.g. a counter
 that goes around), "nuxmv/bmc" (counterexamples only), "nuxmv/portfolio"
@@ -561,6 +565,54 @@ def write_spec(contracts: list[ContractSpec], name: str = "spec") -> str:
     """Write contracts as a specification in the logics language of CHASE,
     which logics_tool and the other CHASE tools read."""
     return chase_cps.to_spec([c.build() for c in contracts], name)
+
+
+# SystemVerilog Assertions ---------------------------------------------------
+
+@tool
+def read_sva(text: str | None = None, path: str | None = None,
+             inputs: list[str] | None = None, outputs: list[str] | None = None,
+             name: str | None = None, parameters: dict[str, int] | None = None,
+             clock: str | None = None) -> dict:
+    """Read the assume property and assert property statements of
+    SystemVerilog (a module, a bind file, or the statements alone; text or
+    a file path) as a contract: assumptions and guarantees, with the widths
+    of Verilog, $past, bounded sequences, and disable iff. The directions
+    come from the module ports, or from `inputs` or `outputs` (the other
+    signals are of the other kind). Returns the contract, the properties
+    read (label, kind, formula, from_cycle: the cycle from which a property
+    with $past is checked), `skipped` (statements not read, with the
+    reason), `covers`, the `clock`, and `undeclared` (signals read as 1
+    bit). One clock per contract: `clock` ("posedge clk") chooses it."""
+    if (text is None) == (path is None):
+        raise ValueError("give either text or path")
+    if path is not None:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    r = chase_cps.parse_sva(text, inputs=inputs, outputs=outputs, name=name,
+                            parameters=parameters, clock=clock)
+    return {"contract": r.contract.to_dict(),
+            "properties": [{"label": p.label, "kind": p.kind,
+                            "formula": chase_cps.ltl.to_str(p.formula),
+                            "from_cycle": p.from_cycle} for p in r.properties],
+            "skipped": [{"label": s.label, "text": s.text, "reason": s.reason}
+                        for s in r.skipped],
+            "covers": r.covers, "clock": r.clock, "undeclared": r.undeclared}
+
+
+@tool
+def write_sva(contract: ContractSpec, clock: str = "clk", edge: str = "posedge",
+              reset: str | None = None, module: str | None = None,
+              bind: str | None = None) -> str:
+    """Write a contract as a SystemVerilog checker module: assumptions as
+    assume property, guarantees as assert property, clocked by
+    @(edge clock); a formula G p is checked at every cycle, any other once
+    (initial). `reset` (e.g. "rst" or "!rst_n") disables the properties
+    while it holds; `bind`, the name of a design module, adds a bind
+    statement (ports connected by name). Any tool that reads SVA can check
+    the module. Real variables cannot be written."""
+    return chase_cps.to_sva(contract.build(), clock=clock, edge=edge, reset=reset,
+                            module=module, bind=bind)
 
 
 def _protocol_stdout():

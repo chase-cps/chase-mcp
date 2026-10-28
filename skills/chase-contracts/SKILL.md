@@ -41,6 +41,8 @@ contract, not that the contract is wrong in general.
 | `is_well_separated`, `is_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.is_vacuous(c)` |
 | **Specifications in the CHASE language** | |
 | `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
+| **SystemVerilog Assertions** | |
+| `read_sva`, `write_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
 
 The operations that build contracts return a new contract. The checks return
 a status and, when they fail, a counterexample. `implies` checks validity
@@ -242,6 +244,21 @@ component does next. A pattern such as `G (req -> F grant)` is not GR(1);
 this form the result is `unknown` with the reason, naming the term; rewrite
 it, or use the model checker based tools instead. Temporal operators apply
 to formulas: write `x'`, not `X x`, inside a comparison or arithmetic.
+
+## SystemVerilog
+
+`read_sva` reads the assertions of a design or a bind file as a contract:
+`assume property` gives assumptions, `assert property` guarantees, one cycle
+of the clock per step. Look at `skipped` first and tell the user which
+properties were not read and why (local variables, `[->n]`, several clocks,
+hierarchical names...); the contract says nothing about them. Signals in
+`undeclared` were read as 1 bit: give their types (`inputs`/`outputs` with
+types, or the declarations) when they are vectors. A property with `$past`
+is checked from cycle `from_cycle`. The widths are those of Verilog:
+`count == $past(count) + 1` does not wrap around (the constant has 32 bits).
+`a |-> ##[1:$] b` is not read: in an assert it never fails; it means
+`a |-> s_eventually b` when liveness is meant. `write_sva` gives the
+checker module to run in a formal tool or a simulator; it does not run them.
 
 ## Examples
 

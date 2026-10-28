@@ -42,7 +42,7 @@ def test_tools_are_listed():
     assert {"compose", "conjoin", "disjoin", "merge", "divide", "separate", "saturate",
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
-            "accepts", "remove_redundant", "read_spec", "write_spec", "imply", "coimply",
+            "accepts", "remove_redundant", "read_spec", "write_spec", "read_sva", "write_sva", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
             "is_vacuous", "is_receptive"} == asyncio.run(run())
 
@@ -350,6 +350,30 @@ def test_words():
     err, r = call("verify", {"contract": {**inc, "guarantees": ["G (b = a :: a)"]}})
     assert err and "same width" in r
     err, r = call("verify", {"contract": {**inc, "inputs": {"a": "word[x]"}}})
+    assert err
+
+
+def test_sva():
+    text = """module m (input logic clk, input logic req, output logic gnt,
+                        output logic [7:0] count);
+      A0: assume property (@(posedge clk) req |=> !req);
+      G0: assert property (@(posedge clk) req |-> ##[1:2] gnt);
+      G1: assert property (@(posedge clk) count == $past(count) + 1);
+      G2: assert property (@(posedge clk) req |-> ##[1:$] gnt);
+    endmodule"""
+    err, r = call("read_sva", {"text": text})
+    assert not err, r
+    assert r["contract"]["inputs"] == {"req": "bool"}
+    assert r["contract"]["outputs"] == {"count": "word[8]", "gnt": "bool"}
+    assert [p["formula"] for p in r["properties"]][:2] == [
+        "G (req -> X !req)", "G (req -> X gnt | X X gnt)"]
+    assert r["properties"][2]["from_cycle"] == 1
+    assert r["skipped"][0]["label"] == "G2" and "s_eventually" in r["skipped"][0]["reason"]
+    err, sv = call("write_sva", {"contract": r["contract"], "reset": "!rst_n", "bind": "m"})
+    assert not err and "assert property" in sv and "bind m m_sva m_sva_i (.*);" in sv
+    err, back = call("read_sva", {"text": sv})
+    assert not err and not back["skipped"]
+    err, msg = call("read_sva", {})
     assert err
 
 
