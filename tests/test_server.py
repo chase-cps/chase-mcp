@@ -86,6 +86,10 @@ def test_merge_and_divide_with_discharge():
               "assumptions": ["G a"], "guarantees": ["G c"]}
     part = {"name": "Part", "inputs": {"a": "bool"}, "outputs": {"b": "bool"},
             "assumptions": ["G a"], "guarantees": ["G (a -> b)"]}
+    c3 = dict(grant, name="C3", inputs={"r": "bool", "l": "bool"}, assumptions=["G (l -> r)"])
+    err, k = call("conjoin", {"contracts": [c3, lock], "discharge": True})
+    assert not err and k["assumptions"] == ["G (l -> r)"]
+    assert sorted(k["guarantees"]) == ["G (l -> g)", "G F (g | !r)"]
     err, q = call("divide", {"system": system, "part": part, "discharge": True})
     assert not err and sorted(q["assumptions"]) == ["G (a -> b)", "G a"]
     assert q["guarantees"] == ["G c"]

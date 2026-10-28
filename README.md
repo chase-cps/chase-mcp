@@ -21,7 +21,8 @@ returns a new contract. They hold for any assume-guarantee contracts.
   of the contracts and drops the assumptions discharged by the other
   contracts (this uses the checks of layer 2).
 - **conjoin** and **disjoin**: conjunction and disjunction (greatest lower
-  bound and least upper bound).
+  bound and least upper bound). With `discharge`, the conjunction keeps the
+  terms (the same contract).
 - **merge**: merging of viewpoints of the same component. With `discharge`,
   the result keeps the terms of the viewpoints (the same contract).
 - **divide**: the quotient, i.e. the contract of a missing component. With

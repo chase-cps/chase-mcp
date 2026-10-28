@@ -195,7 +195,8 @@ satisfies the contract, so `verify` would still find it.
    `discharge: true`, the merge keeps the terms of the viewpoints (the same
    contract), as `is_realizable` and `synthesize` need. Each viewpoint then
    holds under the assumptions of all of them. Use `conjoin` when each
-   specification must hold under its own assumptions, and
+   specification must hold under its own assumptions (with `discharge: true`
+   it keeps the terms too; with the same assumptions it is (A, G1 & G2)), and
    `disjoin` for a contract that either of two specifications satisfies
    (two acceptable variants, such as two operating modes).
 9. **Changing a contract.**

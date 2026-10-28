@@ -181,10 +181,25 @@ def compose(contracts: list[ContractSpec], name: str | None = None, discharge: b
 
 
 @tool
-def conjoin(contracts: list[ContractSpec], name: str | None = None) -> dict:
+def conjoin(contracts: list[ContractSpec], name: str | None = None, discharge: bool = False,
+            timeout: float = 60, backend: Backend = "auto") -> dict:
     """Conjunction (greatest lower bound) of two or more contracts: a contract
-    that refines all of them, (A1 | A2, G1 & G2)."""
-    return _fold(contracts, "conjoin", name)
+    that refines all of them, (A1 | A2, G1 & G2).
+
+    With discharge, the result keeps the terms (the same contract): each
+    guarantee under the assumptions of its contract that the others do not
+    imply; with the same assumptions, (A, G1 & G2). Each test is one
+    model-checking call."""
+    if not discharge:
+        return _fold(contracts, "conjoin", name)
+    if len(contracts) < 2:
+        raise ValueError("give at least two contracts")
+    result = contracts[0].build()
+    for spec in contracts[1:]:
+        result = result.conjoin(spec.build(), discharge=True, backend=backend, timeout=timeout)
+    if name:
+        result.name = name
+    return result.to_dict()
 
 
 @tool
