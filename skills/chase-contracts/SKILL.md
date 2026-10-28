@@ -246,6 +246,8 @@ to formulas: write `x'`, not `X x`, inside a comparison or arithmetic.
 
 ## SystemVerilog
 
+The meaning is that of the SVA standard (IEEE 1800-2017), not of a tool;
+when a tool disagrees in a corner case, the user checks with that tool.
 `parse_sva` reads the assertions of a design or a bind file as a contract:
 `assume property` gives assumptions, `assert property` guarantees, one cycle
 of the clock per step. Look at `skipped` first and tell the user which
