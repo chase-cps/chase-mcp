@@ -102,14 +102,14 @@ check comes with a counterexample trace: the states of `prefix`, then the
 states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
 
-SystemVerilog: read_sva reads assume/assert property statements as a contract
-(the statements not read are listed with the reason), write_sva writes a
+SystemVerilog: parse_sva reads assume/assert property statements as a contract
+(the statements not read are listed with the reason), to_sva writes a
 contract as a checker module for any tool that reads SVA.
 
-The back end may name the engine of nuXmv: "nuxmv/ic3" (the default),
-"nuxmv/bdd" (fast when a counterexample needs a long loop, e.g. a counter
-that goes around), "nuxmv/bmc" (counterexamples only), "nuxmv/portfolio"
-(IC3 and BDDs at the same time). After a timeout with IC3, try "nuxmv/bdd".
+The back end may name the engine of nuXmv: by default IC3 and BDDs run at
+the same time ("nuxmv/portfolio"); "nuxmv/ic3", "nuxmv/bdd" (fast when a
+counterexample needs a long loop, e.g. a counter that goes around), or
+"nuxmv/bmc" (counterexamples only) run one engine.
 """
 
 server = MCPServer(name="chase", instructions=INSTRUCTIONS, version=__version__)
@@ -551,7 +551,7 @@ def is_vacuous(contract: ContractSpec, outputs: list[str] | None = None, core: b
 # Specifications in the CHASE language ---------------------------------------
 
 @tool
-def read_spec(text: str | None = None, path: str | None = None) -> dict:
+def parse_spec(text: str | None = None, path: str | None = None) -> dict:
     """Read the contracts of a specification in the logics language of CHASE
     (the .ltl files of logics_tool), given as text or as a file path."""
     if (text is None) == (path is None):
@@ -561,7 +561,7 @@ def read_spec(text: str | None = None, path: str | None = None) -> dict:
 
 
 @tool
-def write_spec(contracts: list[ContractSpec], name: str = "spec") -> str:
+def to_spec(contracts: list[ContractSpec], name: str = "spec") -> str:
     """Write contracts as a specification in the logics language of CHASE,
     which logics_tool and the other CHASE tools read."""
     return chase_cps.to_spec([c.build() for c in contracts], name)
@@ -570,7 +570,7 @@ def write_spec(contracts: list[ContractSpec], name: str = "spec") -> str:
 # SystemVerilog Assertions ---------------------------------------------------
 
 @tool
-def read_sva(text: str | None = None, path: str | None = None,
+def parse_sva(text: str | None = None, path: str | None = None,
              inputs: list[str] | None = None, outputs: list[str] | None = None,
              name: str | None = None, parameters: dict[str, int] | None = None,
              clock: str | None = None) -> dict:
@@ -583,7 +583,8 @@ def read_sva(text: str | None = None, path: str | None = None,
     read (label, kind, formula, from_cycle: the cycle from which a property
     with $past is checked), `skipped` (statements not read, with the
     reason), `covers`, the `clock`, and `undeclared` (signals read as 1
-    bit). One clock per contract: `clock` ("posedge clk") chooses it."""
+    bit), and `names` (hierarchical names: u1__state is u1.state; give them
+    to to_sva). One clock per contract: `clock` ("posedge clk") chooses it."""
     if (text is None) == (path is None):
         raise ValueError("give either text or path")
     if path is not None:
@@ -597,22 +598,24 @@ def read_sva(text: str | None = None, path: str | None = None,
                             "from_cycle": p.from_cycle} for p in r.properties],
             "skipped": [{"label": s.label, "text": s.text, "reason": s.reason}
                         for s in r.skipped],
-            "covers": r.covers, "clock": r.clock, "undeclared": r.undeclared}
+            "covers": r.covers, "clock": r.clock, "undeclared": r.undeclared,
+            "names": r.names}
 
 
 @tool
-def write_sva(contract: ContractSpec, clock: str = "clk", edge: str = "posedge",
+def to_sva(contract: ContractSpec, clock: str = "clk", edge: str = "posedge",
               reset: str | None = None, module: str | None = None,
-              bind: str | None = None) -> str:
+              bind: str | None = None, names: dict[str, str] | None = None) -> str:
     """Write a contract as a SystemVerilog checker module: assumptions as
     assume property, guarantees as assert property, clocked by
     @(edge clock); a formula G p is checked at every cycle, any other once
     (initial). `reset` (e.g. "rst" or "!rst_n") disables the properties
     while it holds; `bind`, the name of a design module, adds a bind
-    statement (ports connected by name). Any tool that reads SVA can check
-    the module. Real variables cannot be written."""
+    statement (ports connected by name; `names`, from parse_sva, connects
+    the hierarchical names). Any tool that reads SVA can check the module.
+    Real variables cannot be written."""
     return chase_cps.to_sva(contract.build(), clock=clock, edge=edge, reset=reset,
-                            module=module, bind=bind)
+                            module=module, bind=bind, names=names)
 
 
 def _protocol_stdout():

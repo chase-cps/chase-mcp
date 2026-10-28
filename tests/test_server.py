@@ -42,7 +42,7 @@ def test_tools_are_listed():
     assert {"compose", "conjoin", "disjoin", "merge", "divide", "separate", "saturate",
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
             "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
-            "accepts", "remove_redundant", "read_spec", "write_spec", "read_sva", "write_sva", "imply", "coimply",
+            "accepts", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
             "is_vacuous", "is_receptive"} == asyncio.run(run())
 
@@ -230,11 +230,11 @@ def test_controller_and_vacuity():
 
 
 def test_spec_round_trip():
-    err, text = call("write_spec", {"contracts": [SPEC], "name": "demo"})
+    err, text = call("to_spec", {"contracts": [SPEC], "name": "demo"})
     assert not err and "CONTRACT Spec" in text
-    err, r = call("read_spec", {"text": text})
+    err, r = call("parse_spec", {"text": text})
     assert not err and r["contracts"][0]["name"] == "Spec"
-    err, msg = call("read_spec", {"path": "/nonexistent.ltl"})
+    err, msg = call("parse_spec", {"path": "/nonexistent.ltl"})
     assert err and "no such file" in msg
 
 
@@ -361,7 +361,7 @@ def test_sva():
       G1: assert property (@(posedge clk) count == $past(count) + 1);
       G2: assert property (@(posedge clk) req |-> ##[1:$] gnt);
     endmodule"""
-    err, r = call("read_sva", {"text": text})
+    err, r = call("parse_sva", {"text": text})
     assert not err, r
     assert r["contract"]["inputs"] == {"req": "bool"}
     assert r["contract"]["outputs"] == {"count": "word[8]", "gnt": "bool"}
@@ -369,11 +369,11 @@ def test_sva():
         "G (req -> X !req)", "G (req -> X gnt | X X gnt)"]
     assert r["properties"][2]["from_cycle"] == 1
     assert r["skipped"][0]["label"] == "G2" and "s_eventually" in r["skipped"][0]["reason"]
-    err, sv = call("write_sva", {"contract": r["contract"], "reset": "!rst_n", "bind": "m"})
+    err, sv = call("to_sva", {"contract": r["contract"], "reset": "!rst_n", "bind": "m"})
     assert not err and "assert property" in sv and "bind m m_sva m_sva_i (.*);" in sv
-    err, back = call("read_sva", {"text": sv})
+    err, back = call("parse_sva", {"text": sv})
     assert not err and not back["skipped"]
-    err, msg = call("read_sva", {})
+    err, msg = call("parse_sva", {})
     assert err
 
 

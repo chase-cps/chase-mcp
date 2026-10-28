@@ -80,9 +80,9 @@ in general.
 
 Specifications:
 
-- **read_spec** and **write_spec**: read and write contracts in the logics
+- **parse_spec** and **to_spec**: read and write contracts in the logics
   language of CHASE (the `.ltl` files of `logics_tool`).
-- **read_sva** and **write_sva**: read the `assume property` and `assert
+- **parse_sva** and **to_sva**: read the `assume property` and `assert
   property` statements of SystemVerilog as a contract (the statements not
   read are listed with the reason), and write a contract as a checker module
   for any tool that reads SVA.

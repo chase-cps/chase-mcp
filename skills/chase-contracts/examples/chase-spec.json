@@ -7,14 +7,14 @@
             "assumptions": ["G F !obstacle"], "guarantees": ["G (obstacle -> X stop)"]}
   },
   "steps": [
-    {"tool": "read_spec", "args": {"text": "$spec"},
+    {"tool": "parse_spec", "args": {"text": "$spec"},
      "save_contracts": true,
      "note": "Returns the contracts of the specification as JSON, here Sensor and Brake."},
     {"tool": "compose", "args": {"contracts": ["$Sensor", "$Brake"]},
      "save": "System"},
     {"tool": "refines", "args": {"refined": "$System", "abstract": "$Car"},
      "expect": {"status": "valid"}},
-    {"tool": "write_spec", "args": {"contracts": ["$System", "$Car"], "name": "pipeline_check"},
+    {"tool": "to_spec", "args": {"contracts": ["$System", "$Car"], "name": "pipeline_check"},
      "note": "Writes the contracts back in the CHASE language, e.g. to run them with logics_tool."}
   ]
 }

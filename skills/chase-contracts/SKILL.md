@@ -40,9 +40,9 @@ contract, not that the contract is wrong in general.
 | `unrealizable_core` | `chase_cps.unrealizable_core(c)`; or `core=True` on `is_realizable` |
 | `is_well_separated`, `is_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.is_vacuous(c)` |
 | **Specifications in the CHASE language** | |
-| `read_spec`, `write_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
+| `parse_spec`, `to_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 | **SystemVerilog Assertions** | |
-| `read_sva`, `write_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
+| `parse_sva`, `to_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
 
 The operations that build contracts return a new contract. The checks return
 a status and, when they fail, a counterexample. `implies` checks validity
@@ -149,10 +149,9 @@ satisfies the contract, so `verify` would still find it.
      that violates the system guarantees: strengthen a component guarantee,
      or the system contract asks for too much.
    - `unknown`: the check did not finish (see `reason`). Increase `timeout`,
-     use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges. After a
-     timeout of IC3 (the default engine), try `backend: "nuxmv/bdd"`: BDDs
-     are fast when a counterexample needs a long loop (a counter that goes
-     around), or `"nuxmv/portfolio"` (IC3 and BDDs at the same time).
+     use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges. nuXmv
+     runs IC3 and BDDs at the same time by default; one engine can be
+     chosen with `backend: "nuxmv/ic3"`, `"nuxmv/bdd"`, `"nuxmv/bmc"`.
 5. **Missing components.** `divide(system, part)` (the quotient) gives the
    contract of the component still to design: the largest contract that,
    composed with `part`, refines `system`. `is_realizable` tells whether it
@@ -247,7 +246,7 @@ to formulas: write `x'`, not `X x`, inside a comparison or arithmetic.
 
 ## SystemVerilog
 
-`read_sva` reads the assertions of a design or a bind file as a contract:
+`parse_sva` reads the assertions of a design or a bind file as a contract:
 `assume property` gives assumptions, `assert property` guarantees, one cycle
 of the clock per step. Look at `skipped` first and tell the user which
 properties were not read and why (local variables, `[->n]`, several clocks,
@@ -257,7 +256,7 @@ types, or the declarations) when they are vectors. A property with `$past`
 is checked from cycle `from_cycle`. The widths are those of Verilog:
 `count == $past(count) + 1` does not wrap around (the constant has 32 bits).
 `a |-> ##[1:$] b` is not read: in an assert it never fails; it means
-`a |-> s_eventually b` when liveness is meant. `write_sva` gives the
+`a |-> s_eventually b` when liveness is meant. `to_sva` gives the
 checker module to run in a formal tool or a simulator; it does not run them.
 
 ## Examples
