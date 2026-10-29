@@ -104,6 +104,10 @@ check comes with a counterexample trace: the states of `prefix`, then the
 states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
 
+Diagrams: visualize draws contracts as a web page (composition side by side,
+refinement as nesting, the results of the checks on the boxes) and returns
+its path; tell the user to open it in a browser.
+
 SystemVerilog: parse_sva reads assume/assert property statements as a contract
 (the statements not read are listed with the reason), to_sva writes a
 contract as a checker module for any tool that reads SVA.
@@ -722,6 +726,69 @@ def to_sva(contract: ContractSpec, clock: str = "clk", edge: str = "posedge",
     Real variables cannot be written."""
     return chase_cps.to_sva(contract.build(), clock=clock, edge=edge, reset=reset,
                             module=module, bind=bind, names=names)
+
+
+# Diagrams ---------------------------------------------------------------------
+
+WRITES_A_FILE = ToolAnnotations(read_only_hint=False, destructive_hint=False,
+                                idempotent_hint=True, open_world_hint=False)
+
+
+@server.tool(annotations=WRITES_A_FILE)
+@_user_errors
+def visualize(contracts: list[ContractSpec] | None = None, text: str | None = None,
+              path: str | None = None, draw: list[str] | None = None,
+              refines: list[tuple[str, str]] | None = None, check: bool = False,
+              verify: bool = False, realizable: bool = False, output: str | None = None,
+              timeout: float = 60) -> dict:
+    """Draw contracts as a web page: the contracts given as JSON, or the
+    contracts of a specification in the logics language of CHASE (text, or
+    the path of a file). `draw` names the contracts to draw (default: all);
+    NAME+NAME draws their composition, a box with the contracts inside,
+    wired by the names of their variables. `refines` lists [refined,
+    abstract] pairs: the refined one is drawn inside the abstract one.
+    `check` checks the refinements; `verify` and `realizable` check each
+    contract drawn, and mark the terms of a core when a check fails. The
+    page is written to `output` (default: a new temporary file) and opens in
+    any browser. Returns its path, and for each box its checks."""
+    import tempfile
+    from chase_cps import viz
+    if sum(x is not None for x in (contracts, text, path)) != 1:
+        raise ValueError("give one of contracts, text, or path")
+    with tempfile.TemporaryDirectory(prefix="chase_viz_") as tmp:
+        if contracts is not None:
+            path = os.path.join(tmp, "contracts.json")
+            with open(path, "w") as f:
+                import json
+                json.dump({"contracts": [c.build().to_dict() for c in contracts]}, f)
+            title = "contracts"
+        elif text is not None:
+            path = os.path.join(tmp, "spec.ltl")
+            with open(path, "w") as f:
+                f.write(text)
+            title = "specification"
+        else:
+            title = None
+        d = viz.from_spec(path, draw or (), refines or (), check=check, verify=verify,
+                          realizable=realizable, timeout=timeout, title=title)
+    if output is None:
+        fd, output = tempfile.mkstemp(prefix="chase-", suffix=".html")
+        os.close(fd)
+    viz.save(d, output)
+
+    def boxes(nodes):
+        for n in nodes:
+            entry = {"box": n["title"], "kind": n["kind"]}
+            if n.get("badge") and n["badge"].get("status"):
+                entry[{"⪯": "refines", "M ⊨ C": "implementation",
+                       "E ⊨ A": "environment"}.get(n["badge"]["text"], n["badge"]["text"])] = \
+                    n["badge"]["status"]
+            for c in n.get("checks", []):
+                entry[{"A": "compatible", "G": "consistent", "A∧G": "feasible",
+                       "R": "realizable"}.get(c["name"], c["name"])] = c["status"]
+            yield entry
+            yield from boxes(n.get("children", []))
+    return {"page": output, "boxes": list(boxes(d["nodes"]))}
 
 
 def _protocol_stdout():

@@ -44,7 +44,7 @@ def test_tools_are_listed():
             "is_realizable", "synthesize", "implies", "is_satisfiable", "is_implementation",
             "is_environment", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
-            "is_vacuous", "is_receptive"} == asyncio.run(run())
+            "is_vacuous", "is_receptive", "visualize"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -467,3 +467,19 @@ def test_real_variables():
     assert not err and r["status"] == "invalid"
     trace = r["guarantees"]["trace"]
     assert all(isinstance(s["kias"], (int, float, str)) for s in trace["prefix"] + trace["loop"])
+
+
+def test_visualize(tmp_path):
+    a = {"name": "A", "inputs": {"x": "bool"}, "outputs": {"y": "bool"}, "guarantees": ["G (x -> y)"]}
+    b = {"name": "B", "inputs": {"y": "bool"}, "outputs": {"z": "bool"}, "guarantees": ["G (y -> z)"]}
+    top = {"name": "Top", "inputs": {"x": "bool"}, "outputs": {"y": "bool", "z": "bool"},
+           "guarantees": ["G (x -> z)"]}
+    out = tmp_path / "plan.html"
+    err, r = call("visualize", {"contracts": [a, b, top], "draw": ["A+B"],
+                                "refines": [["A+B", "Top"]], "check": True, "verify": True,
+                                "output": str(out)})
+    assert not err and r["page"] == str(out) and "elk" in out.read_text()
+    assert r["boxes"][0]["box"] == "Top" and r["boxes"][0]["refines"] == "valid"
+    assert {b["box"] for b in r["boxes"]} == {"Top", "A", "B"}
+    err, r = call("visualize", {"contracts": [a], "text": "NAME: s;"})
+    assert err and "one of" in r

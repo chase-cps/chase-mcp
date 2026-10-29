@@ -90,6 +90,14 @@ Specifications:
   property` statements of SystemVerilog as a contract (the statements not
   read are listed with the reason), and write a contract as a checker module
   for any tool that reads SVA.
+
+Diagrams:
+
+- **visualize**: draw contracts (JSON, or a specification) as a web page:
+  a composition is a box with its parts inside, wired by their variables, a
+  refinement is drawn inside the contract it refines, and the results of the
+  checks are tags on the boxes. Returns the path of the page and the checks
+  of each box.
 - **rtl_ports**: the ports of a Verilog or SystemVerilog module, read with
   Yosys; `is_implementation`, `is_environment`, and `is_receptive` take such a module
   (`rtl`) as the state machine.

@@ -44,6 +44,8 @@ contract, not that the contract is wrong in general.
 | **SystemVerilog Assertions** | |
 | `parse_sva`, `to_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
 | `rtl_ports`; `rtl` in `is_implementation`, `is_environment`, `is_receptive` | `chase_cps.Model.from_rtl(files, top)` |
+| **Diagrams** | |
+| `visualize` | `chase_cps.viz.from_spec(path)`, `chase_cps.viz.diagram(...)`, `chase-cps view FILE` |
 
 The operations that build contracts return a new contract. The checks return
 a status and, when they fail, a counterexample. `implies` checks validity
