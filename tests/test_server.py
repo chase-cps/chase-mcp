@@ -41,8 +41,8 @@ def test_tools_are_listed():
             return {t.name for t in (await client.list_tools()).tools}
     assert {"compose", "conjoin", "disjoin", "merge", "divide", "separate", "saturate",
             "simplify", "refines", "verify", "is_consistent", "is_compatible",
-            "is_realizable", "synthesize", "implies", "is_satisfiable", "implements",
-            "accepts", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
+            "is_realizable", "synthesize", "implies", "is_satisfiable", "is_implementation",
+            "is_environment", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
             "is_vacuous", "is_receptive"} == asyncio.run(run())
 
@@ -177,10 +177,10 @@ def test_quotient_with_part_refines_system():
 
 
 def test_implementation_and_environment():
-    err, r = call("implements",
+    err, r = call("is_implementation",
                   {"implementation": "G (req -> X grant)", "contract": SPEC})
     assert not err and r["status"] == "valid"
-    err, r = call("accepts", {"contract": SPEC, "environment": "G req"})
+    err, r = call("is_environment", {"contract": SPEC, "environment": "G req"})
     assert not err and r["status"] == "invalid"
 
 
@@ -201,7 +201,7 @@ NEXT = {"name": "Next", "inputs": {"req": "bool"}, "outputs": {"grant": "bool"},
 
 
 def test_state_machines():
-    err, r = call("implements", {"contract": NEXT, "smv": BLOCKING})
+    err, r = call("is_implementation", {"contract": NEXT, "smv": BLOCKING})
     assert not err and r["status"] == "valid"
     err, r = call("is_receptive", {"contract": NEXT, "smv": BLOCKING})
     assert not err and r["status"] == "not_receptive"
@@ -212,17 +212,17 @@ def test_state_machines():
                    {"from": "idle", "when": "req", "outputs": {"grant": False}, "to": "busy"},
                    {"from": "idle", "when": "!req", "outputs": {"grant": False}, "to": "idle"},
                    {"from": "busy", "outputs": {"grant": True}, "to": "idle"}]}
-    err, r = call("implements", {"contract": NEXT, "machine": machine})
+    err, r = call("is_implementation", {"contract": NEXT, "machine": machine})
     assert not err and r["status"] == "invalid"
     err, r = call("is_receptive", {"contract": NEXT, "machine": machine})
     assert not err and r["status"] == "receptive"
     env = "MODULE main\nVAR\n  req : boolean;\nASSIGN\n  init(req) := FALSE;\n  next(req) := !req;\n"
     spaced = {**NEXT, "name": "Spaced", "assumptions": ["G (req -> X !req)"]}
-    err, r = call("accepts", {"contract": spaced, "smv": env})
+    err, r = call("is_environment", {"contract": spaced, "smv": env})
     assert not err and r["status"] == "valid"
-    err, msg = call("implements", {"contract": NEXT})
+    err, msg = call("is_implementation", {"contract": NEXT})
     assert err and "formula or as a state machine" in msg
-    err, msg = call("implements", {"contract": NEXT, "smv": "MODULE main\nVAR\n  x : boolean;\n"})
+    err, msg = call("is_implementation", {"contract": NEXT, "smv": "MODULE main\nVAR\n  x : boolean;\n"})
     assert err and "does not declare" in msg
 
 
@@ -236,7 +236,7 @@ def test_controller_and_vacuity():
            "guarantees": ["!grant", "G (grant -> req)", "G F (!req | grant)"]}
     err, r = call("synthesize", {"contract": arb})
     assert not err and r["status"] == "realizable"
-    err, q = call("implements", {"contract": arb, "controller": r["controller"]})
+    err, q = call("is_implementation", {"contract": arb, "controller": r["controller"]})
     assert not err and q["status"] == "valid"
     err, q = call("is_receptive", {"contract": arb, "controller": r["controller"]})
     assert not err and q["status"] == "receptive"
@@ -433,15 +433,15 @@ def test_rtl():
     slot = {"name": "Slot", "inputs": ports["inputs"], "outputs": ports["outputs"],
             "assumptions": ["G (yumi_i -> v_o)"],
             "guarantees": ["G (v_o & !yumi_i -> X v_o)", "G (v_o -> !ready_o)"]}
-    err, r = call("implements", {"contract": slot, "rtl": rtl})
+    err, r = call("is_implementation", {"contract": slot, "rtl": rtl})
     assert not err and r["status"] == "valid", r
-    err, r = call("implements", {"contract": {**slot, "guarantees": ["G ready_o"]}, "rtl": rtl})
+    err, r = call("is_implementation", {"contract": {**slot, "guarantees": ["G ready_o"]}, "rtl": rtl})
     assert not err and r["status"] == "invalid"
     err, r = call("is_receptive", {"contract": slot, "rtl": rtl})
     assert not err and r["status"] == "receptive"
-    err, msg = call("implements", {"contract": slot, "rtl": {"top": "buf1"}})
+    err, msg = call("is_implementation", {"contract": slot, "rtl": {"top": "buf1"}})
     assert err and "files or the sources" in msg
-    err, msg = call("implements", {"contract": slot, "rtl": rtl, "smv": "MODULE main"})
+    err, msg = call("is_implementation", {"contract": slot, "rtl": rtl, "smv": "MODULE main"})
     assert err and "give one of" in msg
 
 

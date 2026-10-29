@@ -29,7 +29,7 @@ contract, not that the contract is wrong in general.
 | **2. Checks on contracts (nuXmv)** | |
 | `refines` | `chase_cps.refines(refined, abstract)` |
 | `verify`, `is_compatible`, `is_consistent` | `chase_cps.verify(c)`, `chase_cps.is_compatible(c)`, `chase_cps.is_consistent(c)` |
-| `implements`, `accepts` | `chase_cps.implements(implementation, c)`, `chase_cps.accepts(c, environment)`: a formula or a state machine |
+| `is_implementation`, `is_environment` | `chase_cps.is_implementation(implementation, c)`, `chase_cps.is_environment(environment, c)`: a formula or a state machine |
 | `is_receptive` | `chase_cps.is_receptive(model, c)` |
 | `remove_redundant` | `chase_cps.remove_redundant(c)` |
 | **2. Queries on formulas** | |
@@ -43,13 +43,13 @@ contract, not that the contract is wrong in general.
 | `parse_spec`, `to_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 | **SystemVerilog Assertions** | |
 | `parse_sva`, `to_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
-| `rtl_ports`; `rtl` in `implements`, `accepts`, `is_receptive` | `chase_cps.Model.from_rtl(files, top)` |
+| `rtl_ports`; `rtl` in `is_implementation`, `is_environment`, `is_receptive` | `chase_cps.Model.from_rtl(files, top)` |
 
 The operations that build contracts return a new contract. The checks return
 a status and, when they fail, a counterexample. `implies` checks validity
 (true for every behavior); `is_satisfiable` checks that some behavior
 satisfies a formula, which is not the satisfaction of a contract by a
-component (`implements`). With `core: true`, `verify`, `is_realizable`,
+component (`is_implementation`). With `core: true`, `verify`, `is_realizable`,
 `is_compatible`, `is_consistent`, `is_satisfiable`, `is_well_separated`,
 and `is_vacuous` also return a core: the few terms that cause the failure
 (for `is_vacuous`, the assumptions that let the component win without the
@@ -177,17 +177,17 @@ satisfies the contract, so `verify` would still find it.
    - `remove_redundant` with `synth: true`: drops the terms that are
      redundant in the GR(1) game (implied by others without changing the
      synthesis problem); report them, they often show a misunderstanding.
-   - `synthesize` builds the controller, and `implements` with the
+   - `synthesize` builds the controller, and `is_implementation` with the
      controller (and `is_receptive`) checks it against other contracts.
 7. **Implementations and environments.** When the user has a component
    already, as a state machine (an SMV model, a state machine in JSON, or a
    controller from `synthesize`) or as a formula of its behaviors, use
-   `implements(implementation, c)`: every behavior must satisfy A -> G. For
+   `is_implementation(implementation, c)`: every behavior must satisfy A -> G. For
    a state machine also run `is_receptive`: a machine that refuses some
    inputs implements the contract only because those inputs never happen;
    the result gives the state and the input it refuses. When the component
    is placed in an environment (another component, an operating scenario),
-   use `accepts(c, environment)`: every behavior of the environment must
+   use `is_environment(environment, c)`: every behavior of the environment must
    satisfy the assumptions. An invalid result gives the environment
    behavior that the component does not expect.
 8. **Viewpoints.** Use `merge` for different aspects of the same component
@@ -267,7 +267,7 @@ is checked from cycle `from_cycle`. The widths are those of Verilog:
 `a |-> s_eventually b` when liveness is meant. `to_sva` gives the
 checker module to run in a formal tool or a simulator; it does not run them.
 
-RTL: `implements`, `accepts`, and `is_receptive` take a Verilog or
+RTL: `is_implementation`, `is_environment`, and `is_receptive` take a Verilog or
 SystemVerilog module (`rtl`: `top`, and `files` or `sources`). Call
 `rtl_ports` first: the contract uses its port names and types (a 1-bit port
 is a Boolean, a wider one a word; `names` renames ports). With `reset`, the

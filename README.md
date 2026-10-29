@@ -48,8 +48,9 @@ satisfies, such as the axiom of an encoding of finite traces.
   **is_compatible** (some environment satisfies the assumptions) and
   **is_consistent** (some behavior satisfies the contract) check them one at
   a time.
-- **implements** and **accepts**: whether an implementation satisfies the
-  contract, and whether the contract accepts an environment, given as LTL
+- **is_implementation** and **is_environment**: whether an implementation
+  satisfies the contract, and whether an environment satisfies its
+  assumptions, given as LTL
   formulas or as state machines (an SMV model, a state machine in JSON, or a
   controller from `synthesize`).
 - **is_receptive**: whether a state machine accepts every input that the
@@ -61,7 +62,7 @@ satisfies, such as the axiom of an encoding of finite traces.
 - **implies** and **is_satisfiable**, on formulas: validity of an
   implication, and satisfiability of a formula (some behavior satisfies it;
   this is not the satisfaction of a contract by a component, which is
-  `implements`).
+  `is_implementation`).
 - **unsat_core**: a minimal set of terms that cannot hold together;
   `verify`, `is_compatible`, `is_consistent`, and `is_satisfiable` return
   it with `core`.
@@ -90,7 +91,7 @@ Specifications:
   read are listed with the reason), and write a contract as a checker module
   for any tool that reads SVA.
 - **rtl_ports**: the ports of a Verilog or SystemVerilog module, read with
-  Yosys; `implements`, `accepts`, and `is_receptive` take such a module
+  Yosys; `is_implementation`, `is_environment`, and `is_receptive` take such a module
   (`rtl`) as the state machine.
 
 A contract is given in JSON:

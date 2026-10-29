@@ -83,11 +83,13 @@ The tools are in three layers:
    imply, coimply, invert, assume, ensure, saturate, simplify): they return a
    new contract, and hold for any assume-guarantee contracts.
 2. Checks on contracts (refines, verify, is_compatible, is_consistent,
-   implements, accepts, is_receptive, remove_redundant), which reduce to queries on
+   is_implementation, is_environment, is_receptive, remove_redundant), which
+   reduce to queries on
    formulas: implies (validity), is_satisfiable (satisfiability of a
    formula, not the satisfaction of a contract by a component, which is
-   implements), and unsat_core. They take a context: formulas that every
-   behavior satisfies. implements and accepts also take state machines
+   is_implementation), and unsat_core. They take a context: formulas that
+   every behavior satisfies. is_implementation and is_environment also take
+   state machines
    (SMV, a state machine in JSON, or a synthesized controller), and
    is_receptive checks that a machine does not refuse the inputs.
 3. GR(1) synthesis with slugs (is_realizable, synthesize, unrealizable_core,
@@ -104,8 +106,8 @@ guarantee to change.
 
 SystemVerilog: parse_sva reads assume/assert property statements as a contract
 (the statements not read are listed with the reason), to_sva writes a
-contract as a checker module for any tool that reads SVA. implements,
-accepts, and is_receptive take RTL (`rtl`: a Verilog or SystemVerilog
+contract as a checker module for any tool that reads SVA.
+is_implementation, is_environment, and is_receptive take RTL (`rtl`: a Verilog or SystemVerilog
 module); rtl_ports gives its ports, the variables of the contracts.
 
 The back end may name the engine of nuXmv: by default IC3 and BDDs run at
@@ -440,13 +442,15 @@ def _model(smv, machine, controller, synthesized_from, contract: Contract, rtl=N
 
 @tool
 @_machine_doc
-def implements(contract: ContractSpec, implementation: str | None = None,
-               smv: str | None = None, machine: dict | None = None,
-               controller: dict | None = None, synthesized_from: ContractSpec | None = None,
-               rtl: RTLSpec | None = None, timeout: float = 300, backend: Backend = "auto",
-               context: list[str] | None = None) -> dict:
-    """Does the implementation implement the contract? The implementation is
-    an LTL formula (`implementation`): implementation & A -> G must be valid;
+def is_implementation(contract: ContractSpec, implementation: str | None = None,
+                      smv: str | None = None, machine: dict | None = None,
+                      controller: dict | None = None,
+                      synthesized_from: ContractSpec | None = None, rtl: RTLSpec | None = None,
+                      timeout: float = 300, backend: Backend = "auto",
+                      context: list[str] | None = None) -> dict:
+    """Is the implementation an implementation of the contract (M |=_M C)? The
+    implementation is an LTL formula (`implementation`): implementation & A
+    -> G must be valid;
     or a state machine, every behavior of which must satisfy A -> G. A
     machine that refuses inputs can implement a contract only because of
     that: check it with is_receptive. valid, or invalid with a trace.
@@ -456,26 +460,28 @@ def implements(contract: ContractSpec, implementation: str | None = None,
     m = _model(smv, machine, controller, synthesized_from, c, rtl)
     if (m is None) == (implementation is None):
         raise ValueError("give the implementation as a formula or as a state machine")
-    return chase_cps.implements(m if m is not None else implementation, c, backend,
-                                context=context, timeout=timeout).to_dict()
+    return chase_cps.is_implementation(m if m is not None else implementation, c, backend,
+                                       context=context, timeout=timeout).to_dict()
 
 
 @tool
-def accepts(contract: ContractSpec, environment: str | None = None, smv: str | None = None,
-            machine: dict | None = None, rtl: RTLSpec | None = None, timeout: float = 300,
-            backend: Backend = "auto", context: list[str] | None = None) -> dict:
-    """Does the contract accept the environment? The environment is an LTL
-    formula over the variables of the contract (`environment`):
-    environment -> A must be valid; or a state machine (`smv`, `machine`, or
-    `rtl`, as for implements) every behavior of which must satisfy A.
+def is_environment(contract: ContractSpec, environment: str | None = None,
+                   smv: str | None = None, machine: dict | None = None,
+                   rtl: RTLSpec | None = None, timeout: float = 300,
+                   backend: Backend = "auto", context: list[str] | None = None) -> dict:
+    """Is the environment an environment of the contract (E |=_E C)? The
+    environment is an LTL formula over the variables of the contract
+    (`environment`): environment -> A must be valid; or a state machine
+    (`smv`, `machine`, or `rtl`, as for is_implementation) every behavior of
+    which must satisfy A.
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
     c = contract.build()
     m = _model(smv, machine, None, None, c, rtl)
     if (m is None) == (environment is None):
         raise ValueError("give the environment as a formula or as a state machine")
-    return chase_cps.accepts(c, m if m is not None else environment, backend,
-                             context=context, timeout=timeout).to_dict()
+    return chase_cps.is_environment(m if m is not None else environment, c, backend,
+                                    context=context, timeout=timeout).to_dict()
 
 
 @tool
@@ -486,7 +492,7 @@ def is_receptive(contract: ContractSpec, smv: str | None = None, machine: dict |
                  timeout: float = 300, backend: Backend = "auto") -> dict:
     """Does the state machine accept every input that the assumptions of the
     contract allow? A machine that refuses an input has no behavior with it,
-    so implements may hold only because it blocks the inputs. receptive, or
+    so is_implementation may hold only because it blocks the inputs. receptive, or
     not_receptive with the trace to the state after which it refuses an
     input (details: state and input). Uses the initial and safety
     assumptions; the inputs must be Boolean or integer ranges."""
@@ -541,7 +547,7 @@ def is_satisfiable(formula: str, variables: dict[str, VarType], core: bool = Fal
     """On formulas: satisfiability. Does some behavior satisfy the LTL formula?
     sat with a witness trace, or unsat; with core, the conjuncts of the
     formula that cannot hold together. This is not the satisfaction of a
-    contract by a component, which is implements.
+    contract by a component, which is is_implementation.
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
     return chase_cps.is_satisfiable(formula, _variables(variables), backend, core=core,
