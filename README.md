@@ -129,7 +129,9 @@ arithmetic wraps around). Formulas use the standard LTL syntax:
 
 `chase-cps install nuxmv --accept-license` and `chase-cps install slugs`
 install them, and `chase-cps doctor` shows the tools found.
-The [CHASE Docker image][CHASE] contains all of them.
+The [CHASE Docker image][CHASE] contains slugs and NuSMV; nuXmv, whose
+license does not allow redistribution, is added in a container with
+`chase-cps install nuxmv --accept-license`.
 
 ## Installation
 
