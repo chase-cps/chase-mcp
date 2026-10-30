@@ -388,8 +388,9 @@ def test_sva():
     assert not err, r
     assert r["contract"]["inputs"] == {"req": "bool"}
     assert r["contract"]["outputs"] == {"count": "word[8]", "gnt": "bool"}
-    assert [p["formula"] for p in r["properties"]][:2] == [
-        "G (req -> X !req)", "G (req -> X gnt | X X gnt)"]
+    from chase_cps import ltl
+    assert [ltl.parse(p["formula"]) for p in r["properties"]][:2] == [
+        ltl.parse("G (req -> X !req)"), ltl.parse("G (req -> (X gnt | X X gnt))")]
     assert r["properties"][2]["from_cycle"] == 1
     assert r["skipped"][0]["label"] == "G2" and "s_eventually" in r["skipped"][0]["reason"]
     err, sv = call("to_sva", {"contract": r["contract"], "reset": "!rst_n", "bind": "m"})

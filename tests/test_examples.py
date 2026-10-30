@@ -37,8 +37,22 @@ def test_example(path):
         err, result = call(step["tool"], resolve(step["args"], env))
         assert not err, f'{step["tool"]}: {result}'
         for key, value in step.get("expect", {}).items():
-            assert result[key] == value, f'{step["tool"]}: {key} is {result[key]!r}'
+            assert _same(result[key], value), f'{step["tool"]}: {key} is {result[key]!r}'
         if "save" in step:
             env[step["save"]] = result
         if step.get("save_contracts"):
             env.update({c["name"]: c for c in result["contracts"]})
+
+
+def _same(got, want) -> bool:
+    """Equal, with formulas compared as formulas: the printing of a formula
+    (its parentheses) may differ between versions of chase-cps."""
+    from chase_cps import ltl
+    if isinstance(got, list) and isinstance(want, list):
+        return len(got) == len(want) and all(_same(g, w) for g, w in zip(got, want))
+    if isinstance(got, str) and isinstance(want, str) and got != want:
+        try:
+            return ltl.parse(got) == ltl.parse(want)
+        except Exception:
+            return False
+    return got == want
