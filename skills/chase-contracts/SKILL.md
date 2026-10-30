@@ -299,6 +299,9 @@ written for the user is drawn as the design, with nothing more to say:
   Write the contract of the system with the inputs and outputs it has from
   the outside, and the signals between the parts as outputs of the parts
   only.
+- While a part is not written yet (two parts or more are, and some outputs
+  of the system are driven by none), it is drawn as a hole: the quotient
+  of the system by the parts, with the ports the missing part must have.
 
 How to draw:
 
