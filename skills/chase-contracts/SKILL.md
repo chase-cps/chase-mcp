@@ -276,6 +276,29 @@ is a Boolean, a wider one a word; `names` renames ports). With `reset`, the
 reset is not an input, and the contracts are checked from the step after the
 reset. The checks are those of nuXmv: they suit small and medium modules.
 
+## Diagrams
+
+Draw with `visualize` when a picture helps the user more than text: a
+decomposition (the parts inside the contract they should refine), a quotient
+(the missing part as a dashed box, with a candidate inside), a check that
+fails (its core in red), or a state machine against its contract. Do not draw
+for a single contract with a single result: say it in words.
+
+- Give the contracts as JSON (`contracts`), a specification (`text`), or a
+  file (`path`); `draw` names what to draw (`A+B` is their composition, a box
+  with the parts inside, wired by their variables).
+- `refines: [[refined, abstract]]` draws the refined one inside; `check`
+  checks these refinements and the `environments` ([model file, contract]).
+- `verify` and `realizable` check each contract drawn; a failure marks its
+  core. `open` names the contracts drawn open: open the ones whose terms or
+  core the user should read now, and leave the others closed, so that the
+  page stays readable.
+- The tool runs the checks it is asked for: results of other tool calls are
+  not carried over. Ask only for the checks you will talk about.
+- Give the user the path of the page (it opens in any browser) and say in
+  one or two sentences what to look at: which box, which tag, which red
+  terms. The page can export the diagram as SVG, PNG, or PDF.
+
 ## Examples
 
 The `examples` folder contains complete examples. Each file lists the
