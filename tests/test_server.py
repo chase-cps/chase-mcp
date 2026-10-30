@@ -481,5 +481,7 @@ def test_visualize(tmp_path):
     assert not err and r["page"] == str(out) and "elk" in out.read_text()
     assert r["boxes"][0]["box"] == "Top" and r["boxes"][0]["refines"] == "valid"
     assert {b["box"] for b in r["boxes"]} == {"Top", "A", "B"}
+    err, r = call("visualize", {"contracts": [a, b], "open": ["A"], "output": str(out)})
+    assert not err and '"open": true' in out.read_text()
     err, r = call("visualize", {"contracts": [a], "text": "NAME: s;"})
     assert err and "one of" in r

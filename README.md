@@ -96,8 +96,9 @@ Diagrams:
 - **visualize**: draw contracts (JSON, or a specification) as a web page:
   a composition is a box with its parts inside, wired by their variables, a
   refinement is drawn inside the contract it refines, and the results of the
-  checks are tags on the boxes. Returns the path of the page and the checks
-  of each box.
+  checks are tags on the boxes; `environments` draws state machines as
+  environments, and `open` draws contracts open. Returns the path of the
+  page and the checks of each box.
 - **rtl_ports**: the ports of a Verilog or SystemVerilog module, read with
   Yosys; `is_implementation`, `is_environment`, and `is_receptive` take such a module
   (`rtl`) as the state machine.

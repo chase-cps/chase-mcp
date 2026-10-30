@@ -739,18 +739,24 @@ WRITES_A_FILE = ToolAnnotations(read_only_hint=False, destructive_hint=False,
 def visualize(contracts: list[ContractSpec] | None = None, text: str | None = None,
               path: str | None = None, draw: list[str] | None = None,
               refines: list[tuple[str, str]] | None = None, check: bool = False,
-              verify: bool = False, realizable: bool = False, output: str | None = None,
-              timeout: float = 60) -> dict:
+              verify: bool = False, realizable: bool = False,
+              environments: list[tuple[str, str]] | None = None, open: list[str] | None = None,
+              output: str | None = None, timeout: float = 60) -> dict:
     """Draw contracts as a web page: the contracts given as JSON, or the
     contracts of a specification in the logics language of CHASE (text, or
     the path of a file). `draw` names the contracts to draw (default: all);
     NAME+NAME draws their composition, a box with the contracts inside,
     wired by the names of their variables. `refines` lists [refined,
     abstract] pairs: the refined one is drawn inside the abstract one.
-    `check` checks the refinements; `verify` and `realizable` check each
-    contract drawn, and mark the terms of a core when a check fails. The
+    `environments` lists [model file, contract] pairs: the state machine
+    (SMV, JSON, or a controller of slugs) is drawn on the left of the
+    contract, as an environment. `check` checks the refinements and the
+    environments; `verify` and `realizable` check each contract drawn, and
+    mark the terms of a core when a check fails. `open` names the contracts
+    drawn open (their terms, and the core of a check that fails). The
     page is written to `output` (default: a new temporary file) and opens in
     any browser. Returns its path, and for each box its checks."""
+    import builtins             # `open` is the argument here
     import tempfile
     from chase_cps import viz
     if sum(x is not None for x in (contracts, text, path)) != 1:
@@ -758,19 +764,20 @@ def visualize(contracts: list[ContractSpec] | None = None, text: str | None = No
     with tempfile.TemporaryDirectory(prefix="chase_viz_") as tmp:
         if contracts is not None:
             path = os.path.join(tmp, "contracts.json")
-            with open(path, "w") as f:
+            with builtins.open(path, "w") as f:
                 import json
                 json.dump({"contracts": [c.build().to_dict() for c in contracts]}, f)
             title = "contracts"
         elif text is not None:
             path = os.path.join(tmp, "spec.ltl")
-            with open(path, "w") as f:
+            with builtins.open(path, "w") as f:
                 f.write(text)
             title = "specification"
         else:
             title = None
-        d = viz.from_spec(path, draw or (), refines or (), check=check, verify=verify,
-                          realizable=realizable, timeout=timeout, title=title)
+        d = viz.from_spec(path, draw or (), refines or (), environments or (), check=check,
+                          verify=verify, realizable=realizable, timeout=timeout, title=title,
+                          open=open or ())
     if output is None:
         fd, output = tempfile.mkstemp(prefix="chase-", suffix=".html")
         os.close(fd)

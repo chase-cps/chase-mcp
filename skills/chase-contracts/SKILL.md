@@ -1,6 +1,6 @@
 ---
 name: chase-contracts
-description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, or explain a counterexample from these checks.
+description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, explain a counterexample from these checks, or draw contracts, refinements, and the results of the checks as a diagram.
 ---
 
 # Assume-guarantee contracts with CHASE
