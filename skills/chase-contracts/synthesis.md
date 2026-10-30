@@ -2,7 +2,8 @@
 
 ## Before synthesis
 
-For each component to synthesize:
+For each component to synthesize, run these checks before `synthesize`,
+in this order, and report what each one says:
 
 - `is_realizable` with `core: true`: if unrealizable, the core names the
   guarantees that conflict, and the counter-strategy shows how the
@@ -24,6 +25,10 @@ For each component to synthesize:
 - `synthesize` builds the controller, and `is_implementation` with the
   controller (and `is_receptive`) checks it against other contracts.
 
+A controller simplified by hand (fewer states, a rule) is another
+controller: check it with `is_implementation` against the contract of the
+part and with `is_receptive` before you give it as the result.
+
 ## The GR(1) fragment
 
 `is_realizable`, `synthesize`, `is_well_separated`, `is_vacuous`,
@@ -37,3 +42,8 @@ component does next. A pattern such as `G (req -> F grant)` is not GR(1);
 this form the result is `unknown` with the reason, naming the term; rewrite
 it, or use the model checker based tools instead. Temporal operators apply
 to formulas: write `x'`, not `X x`, inside a comparison or arithmetic.
+
+With chase-cps 0.5.0, write `a <-> b` and `!(a <-> b)` for Booleans, not
+`a = b` and `a != b`: slugs reads only numbers in a comparison, and the
+result is `unknown` with an error of its parser (fixed in the next
+version).

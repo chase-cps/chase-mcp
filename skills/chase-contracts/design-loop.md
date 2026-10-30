@@ -29,23 +29,26 @@ compatible (`is_compatible`). A valid refinement means that the
 decomposition is right whatever the parts become later: each part can now
 be designed alone against its own contract.
 
-An `invalid` refinement with `discharge` must be confirmed on the
-composition without `discharge` before you change anything.
-
 ## 4. A part that is not written
 
-When every part but one is written, the quotient gives the weakest contract
-of the missing part: `divide(system, compose(parts))`, with
-`discharge: true`. Use it as the contract of the part, or check a candidate
-against it (`refines(candidate, quotient)`). A candidate can refine the
+When every part but one is written, compute the quotient before you write
+anything for the missing part: `divide(system, compose(parts))`, with
+`discharge: true`. It is the weakest contract of the part. Use it as the
+contract of the part, or check a candidate against it
+(`refines(candidate, quotient)`). When the quotient is not GR(1) (`X X p`,
+a response within n steps), write a GR(1) candidate with outputs of its
+own (a counter), check that it refines the quotient, and run
+`is_realizable` on the candidate. A candidate can refine the
 quotient without refining the contract of the part it replaces. For a part
-to synthesize, run `is_realizable` and then `synthesize` on the quotient
-(`synthesis.md`).
+to synthesize, run `is_realizable` and then `synthesize` on the quotient,
+or on the candidate (`synthesis.md`).
 
 ## 5. Repair
 
 When a check fails, change only what the core or the trace points to:
 
+- `refines` invalid with `discharge`: check again without `discharge`
+  first; only an invalid result there needs a change.
 - `verify` unsat: the core names the terms in conflict. One of them is
   wrong. When the requirements do not say which one, ask the user.
 - `refines` invalid with `failed: assumptions`: the trace is an environment
@@ -67,8 +70,11 @@ Rules:
 - Do not make a check pass with `false`, with assumptions that contradict
   each other, or with assumptions on the outputs of the part.
 - A requirement that the user gave is changed only when the user agrees.
-  Say each change in one sentence, with the core or the step of the trace
-  that asks for it.
+  A part that the user already has (its behavior or its code) counts as a
+  requirement. After a check fails, show the core or the trace, propose
+  the change in one sentence, and wait for the answer: do not run the next
+  checks on a requirement the user has not accepted.
+- Do not add signals between the parts to make a check pass.
 - When the same check fails three times after changes, stop. Show the user
   the core and the trace, and ask.
 
@@ -85,6 +91,6 @@ every level, and every part to synthesize is realizable. Report:
 
 Keep the contracts in a specification file (`.ltl`). Drawn with
 `visualize` (`path`) or `chase-cps view FILE --check`, the results are kept
-next to the file (`FILE.results.json`), and a contract that has not changed
-is not checked again. In the loop, draw again after each change: only the
+next to the file (`crossing.ltl` gives `crossing.results.json`), and a
+contract that has not changed is not checked again. In the loop, draw again after each change: only the
 checks of what changed run.

@@ -99,7 +99,13 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
 arithmetic `+ - * /`, numbers such as `20.5`, and `x'` for the value of `x`
 in the next step.
 Unary operators bind tighter than binary ones: `G a -> b` means
-`(G a) -> b`; write `G (a -> b)`.
+`(G a) -> b`; write `G (a -> b)`. This is for the formulas of the tools
+and of Python. A specification file (`.ltl`, the CHASE language) follows
+older rules: `G`, `F`, `X` reach as far right as they can, so that
+`G a -> b` is `G (a -> b)` and `X a | b` is `X (a | b)`. In a file, put
+parentheses around every formula under a temporal operator, start
+comments with `#`, and read the file back with `parse_spec` to compare
+the formulas with what you meant.
 
 Names cannot be keywords: `G F X U R W true false`, and CHASE keywords such as
 `P`, `NAME`, `CONTRACT`, `integer`. Use `p1`, `ready`, and so on.

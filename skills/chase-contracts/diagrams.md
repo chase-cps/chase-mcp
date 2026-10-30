@@ -31,7 +31,7 @@ How to draw:
   (`contracts`), a specification (`text`), or a file (`path`). `check` (the
   default) checks A∧G of each contract (with the core when it fails) and
   the refinements drawn. For a file, the results are kept next to it
-  (`FILE.results.json`): the user sees them in the editor, and a contract
+  (`crossing.ltl` gives `crossing.results.json`): the user sees them in the editor, and a contract
   that has not changed is not checked again. `draw` and `refines` give another
   arrangement: `draw: ["A+B"]` draws the composition of A and B,
   `refines: [[refined, abstract]]` draws the refined one inside.
