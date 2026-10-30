@@ -755,9 +755,12 @@ def visualize(contracts: list[ContractSpec] | None = None, text: str | None = No
     refined one is drawn inside the abstract one.
     `environments` lists [model file, contract] pairs: the state machine
     (SMV, JSON, or a controller of slugs) is drawn on the left of the
-    contract, as an environment. `check` (the default) checks the
-    refinements drawn and the environments; `verify` and `realizable`
-    check each contract drawn, and
+    contract, as an environment. `check` (the default) checks that the
+    assumptions and the guarantees of each contract can hold together
+    (A ∧ G, with the core when they cannot), and the refinements and the
+    environments drawn; for a file (`path`), the results are kept next to
+    it (FILE.results.json), and a check of contracts that have not changed
+    is not run again. `verify` and `realizable` check each contract drawn, and
     mark the terms of a core when a check fails. `open` names the contracts
     drawn open (their terms, and the core of a check that fails). The
     page is written to `output` (default: a new temporary file) and opens in
@@ -781,9 +784,11 @@ def visualize(contracts: list[ContractSpec] | None = None, text: str | None = No
             title = "specification"
         else:
             title = None
+        from chase_cps.record import results_path   # a file: its results kept next to it
+        results = results_path(path) if title is None else None
         d = viz.from_spec(path, draw or (), refines or (), environments or (), check=check,
                           verify=verify, realizable=realizable, timeout=timeout, title=title,
-                          open=open or ())
+                          open=open or (), results=results)
     if output is None:
         fd, output = tempfile.mkstemp(prefix="chase-", suffix=".html")
         os.close(fd)

@@ -304,7 +304,10 @@ How to draw:
 
 - With the MCP server: `visualize`, with the contracts as JSON
   (`contracts`), a specification (`text`), or a file (`path`). `check` (the
-  default) checks the refinements drawn. `draw` and `refines` give another
+  default) checks A∧G of each contract (with the core when it fails) and
+  the refinements drawn. For a file, the results are kept next to it
+  (`FILE.results.json`): the user sees them in the editor, and a contract
+  that has not changed is not checked again. `draw` and `refines` give another
   arrangement: `draw: ["A+B"]` draws the composition of A and B,
   `refines: [[refined, abstract]]` draws the refined one inside.
 - In a shell, without the server: write the contracts to a `.ltl` file and
