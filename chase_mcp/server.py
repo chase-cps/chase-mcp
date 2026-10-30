@@ -738,20 +738,26 @@ WRITES_A_FILE = ToolAnnotations(read_only_hint=False, destructive_hint=False,
 @_user_errors
 def visualize(contracts: list[ContractSpec] | None = None, text: str | None = None,
               path: str | None = None, draw: list[str] | None = None,
-              refines: list[tuple[str, str]] | None = None, check: bool = False,
+              refines: list[tuple[str, str]] | None = None, check: bool = True,
               verify: bool = False, realizable: bool = False,
               environments: list[tuple[str, str]] | None = None, open: list[str] | None = None,
               output: str | None = None, timeout: float = 60) -> dict:
     """Draw contracts as a web page: the contracts given as JSON, or the
     contracts of a specification in the logics language of CHASE (text, or
-    the path of a file). `draw` names the contracts to draw (default: all);
-    NAME+NAME draws their composition, a box with the contracts inside,
-    wired by the names of their variables. `refines` lists [refined,
-    abstract] pairs: the refined one is drawn inside the abstract one.
+    the path of a file). Without `draw` and `refines`, the contracts are put
+    together by their ports: an output and an input of the same name are
+    wired; contracts with the same ports are versions of one part, and the
+    first one is wired; a contract whose outputs several parts drive, and
+    which gives them what they read from outside, has the parts drawn
+    inside it. `draw` names the contracts to draw instead; NAME+NAME draws
+    their composition, a box with the contracts inside, wired by the names
+    of their variables. `refines` lists [refined, abstract] pairs: the
+    refined one is drawn inside the abstract one.
     `environments` lists [model file, contract] pairs: the state machine
     (SMV, JSON, or a controller of slugs) is drawn on the left of the
-    contract, as an environment. `check` checks the refinements and the
-    environments; `verify` and `realizable` check each contract drawn, and
+    contract, as an environment. `check` (the default) checks the
+    refinements drawn and the environments; `verify` and `realizable`
+    check each contract drawn, and
     mark the terms of a core when a check fails. `open` names the contracts
     drawn open (their terms, and the core of a check that fails). The
     page is written to `output` (default: a new temporary file) and opens in
