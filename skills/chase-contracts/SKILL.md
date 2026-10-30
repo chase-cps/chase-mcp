@@ -1,6 +1,6 @@
 ---
 name: chase-contracts
-description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, explain a counterexample from these checks, or draw contracts, refinements, and the results of the checks as a diagram.
+description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, explain a counterexample from these checks, decompose a system into parts and repair the contracts that fail, or draw contracts, refinements, and the results of the checks as a diagram.
 ---
 
 # Assume-guarantee contracts with CHASE
@@ -141,191 +141,18 @@ satisfies the contract, so `verify` would still find it.
    other (in one direction only). It is an abstraction of the composition,
    so a `valid` refinement holds, but an `invalid` one must be confirmed on
    the composition without `discharge`.
-4. **Read the result.**
-   - `valid`: the components meet the system contract. Check that the
-     composite is still compatible (`is_compatible`): assumptions that cannot
-     be satisfied make every refinement hold vacuously.
-   - `invalid`: `failed` says which part fails. For `assumptions`, the trace
-     is an environment allowed by the system contract that a component does
-     not accept: weaken the component assumptions or strengthen the system
-     assumptions. For `guarantees`, the trace is a behavior of the components
-     that violates the system guarantees: strengthen a component guarantee,
-     or the system contract asks for too much.
-   - `unknown`: the check did not finish (see `reason`). Increase `timeout`,
-     use nuXmv (`backend: "nuxmv"`), or reduce the integer ranges. nuXmv
-     runs IC3 and BDDs at the same time by default; one engine can be
-     chosen with `backend: "nuxmv/ic3"`, `"nuxmv/bdd"`, `"nuxmv/bmc"`.
-5. **Missing components.** `divide(system, part)` (the quotient) gives the
-   contract of the component still to design: the largest contract that,
-   composed with `part`, refines `system`. `is_realizable` tells whether it
-   can be implemented (or gives a counter-strategy of the environment), and
-   `synthesize` builds the controller. Pass `discharge: true` before these:
-   the closed form is not GR(1), the terms often are.
-6. **Before synthesis.** For each component to synthesize:
-   - `is_realizable` with `core: true`: if unrealizable, the core names the
-     guarantees that conflict, and the counter-strategy shows how the
-     environment wins; weaken one of them or add the assumption that is
-     missing.
-   - `is_well_separated`: if not separated, the controller can satisfy the
-     contract by forcing the environment to break its assumptions instead of
-     serving it, while keeping its initial and safety guarantees. Weaken the
-     assumptions in the core, or make them depend less on the outputs (e.g.
-     "after a grant of the request" rather than "after any grant").
-   - `is_vacuous`: if vacuous, the controller can win without an output that
-     a liveness guarantee asks for (never, or from some step on): the
-     assumptions in the core already make the guarantee hold. The guarantee
-     obliges nothing; usually an assumption is too strong (e.g. "the robot
-     stops asking on its own" instead of "after a grant").
-   - `remove_redundant` with `synth: true`: drops the terms that are
-     redundant in the GR(1) game (implied by others without changing the
-     synthesis problem); report them, they often show a misunderstanding.
-   - `synthesize` builds the controller, and `is_implementation` with the
-     controller (and `is_receptive`) checks it against other contracts.
-7. **Implementations and environments.** When the user has a component
-   already, as a state machine (an SMV model, a state machine in JSON, or a
-   controller from `synthesize`) or as a formula of its behaviors, use
-   `is_implementation(implementation, c)`: every behavior must satisfy A -> G. For
-   a state machine also run `is_receptive`: a machine that refuses some
-   inputs implements the contract only because those inputs never happen;
-   the result gives the state and the input it refuses. When the component
-   is placed in an environment (another component, an operating scenario),
-   use `is_environment(environment, c)`: every behavior of the environment must
-   satisfy the assumptions. An invalid result gives the environment
-   behavior that the component does not expect.
-8. **Viewpoints.** Use `merge` for different aspects of the same component
-   (function, timing, safety), and `separate` to remove a viewpoint. With
-   `discharge: true`, the merge keeps the terms of the viewpoints (the same
-   contract), as `is_realizable` and `synthesize` need. Each viewpoint then
-   holds under the assumptions of all of them. Use `conjoin` when each
-   specification must hold under its own assumptions (with `discharge: true`
-   it keeps the terms too; with the same assumptions it is (A, G1 & G2)), and
-   `disjoin` for a contract that either of two specifications satisfies
-   (two acceptable variants, such as two operating modes).
-9. **Changing a contract.**
-   - `assume` with a formula b: the component is responsible only when b
-     holds (an operating mode, a range of the inputs); the result is an
-     abstraction of the contract. `ensure` with b adds the guarantee b; the
-     result refines the contract.
-   - `invert`: the contract seen from the environment, with inputs and
-     outputs swapped: what the environment must guarantee and may assume.
-     Use it to write the contract that a neighbor component must meet.
-   - `imply` with premise c1 and conclusion c2: the largest contract C such
-     that C and c1 together (conjunction) refine c2: what must be added to
-     the specification c1 to meet c2. It is to conjunction what `divide` is to composition.
-     `coimply` is the adjoint of `disjoin`; it is rarely needed.
-10. **Clean up.** `remove_redundant` drops the terms implied by the others.
-   Choose `synth` by what the contract is for next:
+4. **Read the result and go on** with the file for the task:
 
-   | Next | `synth` | Keeps |
-   |---|---|---|
-   | algebra and checks (compose, refines, verify, ...) | false (default) | A -> G |
-   | synthesis (is_realizable, synthesize, ...) | true | realizability and the controllers |
+   | Task | Read |
+   |---|---|
+   | requirements in natural language | `requirements.md` |
+   | a design with several parts, a missing part, contracts that fail and must be fixed | `design-loop.md` |
+   | what a result says; implementations, environments, viewpoints, changing and cleaning up contracts; traces | `checks.md` |
+   | realizability, synthesis, well-separation, vacuity; the GR(1) fragment | `synthesis.md` |
+   | SystemVerilog Assertions and RTL | `hardware.md` |
+   | a diagram | `diagrams.md` |
 
-   The two differ only when the assumptions are wrong (unsatisfiable, or
-   constraining the outputs); then each one can change what the other
-   keeps. If the contract is for both, or you are not sure, do not remove
-   anything. `simplify` rewrites the formulas into a shorter equivalent form.
-   `saturate` gives the equivalent contract (A, A -> G), e.g. to show the
-   user the behaviors a contract allows; the other operations saturate their
-   operands themselves.
-
-## Traces
-
-A trace is a list of `prefix` states followed by a `loop` of states repeated
-forever. Each state gives the value of every variable. Explain a
-counterexample to the user step by step ("at step 2 req is true, and grant
-stays false in the loop"), point to the requirement it violates, and propose
-a change. Do not make a check pass by adding `false` or contradictory
-assumptions.
-
-## Realizability
-
-`is_realizable`, `synthesize`, `is_well_separated`, `is_vacuous`,
-`unrealizable_core`, and `remove_redundant` with `synth` need formulas in the GR(1) fragment: initial conditions
-without temporal operators, safety `G (...)` over the current and next
-values (`x'` or `X x`), and liveness `G F (...)`. In addition, the initial
-assumptions can only read inputs, and the safety assumptions can only read
-the next value of inputs: the environment cannot depend on what the
-component does next. A pattern such as `G (req -> F grant)` is not GR(1);
-`G F (grant | !req)` often says what is meant. When a contract is not in
-this form the result is `unknown` with the reason, naming the term; rewrite
-it, or use the model checker based tools instead. Temporal operators apply
-to formulas: write `x'`, not `X x`, inside a comparison or arithmetic.
-
-## SystemVerilog
-
-The meaning is that of the SVA standard (IEEE 1800-2017), not of a tool;
-when a tool disagrees in a corner case, the user checks with that tool.
-`parse_sva` reads the assertions of a design or a bind file as a contract:
-`assume property` gives assumptions, `assert property` guarantees, one cycle
-of the clock per step. Look at `skipped` first and tell the user which
-properties were not read and why (local variables, `[->n]`, several clocks,
-hierarchical names...); the contract says nothing about them. Signals in
-`undeclared` were read as 1 bit: give their types (`inputs`/`outputs` with
-types, or the declarations) when they are vectors. A property with `$past`
-is checked from cycle `from_cycle`. The widths are those of Verilog:
-`count == $past(count) + 1` does not wrap around (the constant has 32 bits).
-`a |-> ##[1:$] b` is not read: in an assert it never fails; it means
-`a |-> s_eventually b` when liveness is meant. `to_sva` gives the
-checker module to run in a formal tool or a simulator; it does not run them.
-
-RTL: `is_implementation`, `is_environment`, and `is_receptive` take a Verilog or
-SystemVerilog module (`rtl`: `top`, and `files` or `sources`). Call
-`rtl_ports` first: the contract uses its port names and types (a 1-bit port
-is a Boolean, a wider one a word; `names` renames ports). With `reset`, the
-reset is not an input, and the contracts are checked from the step after the
-reset. The checks are those of nuXmv: they suit small and medium modules.
-
-## Diagrams
-
-Draw when a picture helps the user more than text: a decomposition (the
-parts inside the contract they should refine), a quotient (the missing part
-as a dashed box, with a candidate inside), a check that fails (its core in
-red), or a state machine against its contract. Do not draw for a single
-contract with a single result: say it in words.
-
-The contracts are put together by their ports, so that a specification
-written for the user is drawn as the design, with nothing more to say:
-
-- An output and an input with the same name are wired. Give a signal the
-  same name in the contract that drives it and in the contracts that read
-  it.
-- Contracts with the same inputs and outputs are versions of one part (a
-  fix, a candidate). The first one in the file is wired; the others are
-  drawn apart.
-- A contract whose outputs several parts drive, and which gives them what
-  they read from outside, is the contract of their composition: the parts
-  are drawn inside it, and the refinement is checked (⪯, green or red).
-  Write the contract of the system with the inputs and outputs it has from
-  the outside, and the signals between the parts as outputs of the parts
-  only.
-- While a part is not written yet (two parts or more are, and some outputs
-  of the system are driven by none), it is drawn as a hole: the quotient
-  of the system by the parts, with the ports the missing part must have.
-
-How to draw:
-
-- With the MCP server: `visualize`, with the contracts as JSON
-  (`contracts`), a specification (`text`), or a file (`path`). `check` (the
-  default) checks A∧G of each contract (with the core when it fails) and
-  the refinements drawn. For a file, the results are kept next to it
-  (`FILE.results.json`): the user sees them in the editor, and a contract
-  that has not changed is not checked again. `draw` and `refines` give another
-  arrangement: `draw: ["A+B"]` draws the composition of A and B,
-  `refines: [[refined, abstract]]` draws the refined one inside.
-- In a shell, without the server: write the contracts to a `.ltl` file and
-  run `chase-cps view FILE.ltl --check`, which writes `FILE.html`. With the
-  CHASE extension of VS Code, the user sees the diagram beside the file,
-  drawn again as they type, and checked on save.
-- `verify` and `realizable` (`--verify`, `--realizable`) check each
-  contract drawn; a failure marks its core. `open` names the contracts
-  drawn open: open the ones whose terms or core the user should read now,
-  and leave the others closed, so that the page stays readable.
-- The tool runs the checks it is asked for: results of other tool calls are
-  not carried over. Ask only for the checks you will talk about.
-- Give the user the path of the page (it opens in any browser) and say in
-  one or two sentences what to look at: which box, which tag, which red
-  terms. The page can export the diagram as SVG, PNG, or PDF.
+Do not make a check pass by adding `false` or contradictory assumptions.
 
 ## Examples
 
