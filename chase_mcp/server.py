@@ -866,9 +866,10 @@ def parse_smv(text: str | None = None, path: str | None = None) -> dict:
     a file path) as a contract: the IVAR are its inputs, the VAR its outputs
     (a VAR with no ASSIGN is still an output: write an input as IVAR), the
     specifications its guarantees. is_implementation with `smv` set to the
-    model (its specifications are left out) checks it. Not read: enumerated
-    types (write them as integer ranges), DEFINE in a specification (write
-    the expression), CTL, and past operators; the error names the line."""
+    model (its specifications are left out) checks it. An enumerated type is
+    read as the integers 0, 1, ... in the order written (in the traces too),
+    a DEFINE in a specification as its definition. Not read: CTL, past
+    operators, and a DEFINE written with case ... esac; the error says which."""
     from chase_cps import smvspec
     found = _file(text, path, ".smv", smvspec.load_smv)
     return {"contracts": [c.to_dict() for c, _ in found.values()]}

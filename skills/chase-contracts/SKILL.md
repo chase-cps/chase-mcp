@@ -175,9 +175,10 @@ without `lipschitz` to see whether it fails at the samples already.
 
 C and SMV: `parse_c` and `check_c` take a C file with the clauses of ESBMC,
 CBMC, or ACSL. `parse_smv` reads IVAR as inputs and VAR as outputs (a free
-VAR is an output: tell the user to write an input as IVAR); it does not read
-enumerated types or DEFINE in a specification: rewrite them (integer ranges,
-the expression itself) in a copy, and say so.
+VAR is an output: tell the user to write an input as IVAR). An enumerated
+type is read as the integers 0, 1, ... in the order written (say so when you
+show a trace), and a DEFINE in a specification as its definition; CTL, past
+operators, and a DEFINE written with case ... esac are not read.
 
 Do not make a check pass by adding `false` or contradictory assumptions.
 
