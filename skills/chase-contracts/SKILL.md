@@ -45,6 +45,11 @@ contract, not that the contract is wrong in general.
 | `parse_spec`, `to_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 | **SystemVerilog Assertions** | |
 | `parse_sva`, `to_sva` | `chase_cps.parse_sva(text)`, `chase_cps.to_sva(contract)` |
+| **C programs and SMV models** | |
+| `parse_c`, `check_c` | `chase_cps.load_c(path)`, `chase_cps.is_implementation(function, contract)` |
+| `parse_smv` | `chase_cps.smvspec.load_smv(path)` |
+| **Continuous time** | |
+| `refines` with `period`, `lipschitz` | `chase_cps.sampled.sampled(formula, lipschitz, period)` |
 | `rtl_ports`; `rtl` in `is_implementation`, `is_environment`, `is_receptive` | `chase_cps.Model.from_rtl(files, top)` |
 | **Diagrams** | |
 | `visualize` | `chase_cps.viz.from_spec(path)`, `chase_cps.viz.diagram(...)`, `chase-cps view FILE` |
