@@ -125,6 +125,11 @@ Diagrams: visualize draws contracts as a web page (composition side by side,
 refinement as nesting, the results of the checks on the boxes) and returns
 its path; tell the user to open it in a browser.
 
+C: parse_c reads the contracts written in a C file (the clauses of ESBMC,
+CBMC, or ACSL), check_c checks each function against its own (ESBMC, CBMC).
+SMV: parse_smv reads a model with its LTLSPEC and INVARSPEC as a contract.
+Continuous time: refines takes period and lipschitz (how fast each variable
+changes) and then checks the refinement between the samples too.
 SystemVerilog: parse_sva reads assume/assert property statements as a contract
 (the statements not read are listed with the reason), to_sva writes a
 contract as a checker module for any tool that reads SVA.
@@ -335,15 +340,51 @@ def simplify(contract: ContractSpec, name: str | None = None) -> dict:
 
 @tool
 def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
-            backend: Backend = "auto", context: list[str] | None = None) -> dict:
+            backend: Backend = "auto", context: list[str] | None = None,
+            period: float | None = None,
+            lipschitz: Union[float, dict[str, float], None] = None) -> dict:
     """Does `refined` refine `abstract` (can it replace it)? Checks that the
     assumptions of `abstract` imply those of `refined`, and that the
     guarantees of `refined` imply those of `abstract`. status is valid,
     invalid (with `failed` and a counterexample trace), or unknown.
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
-    encoding, a physical law); the behaviors that violate them are left out."""
+    encoding, a physical law); the behaviors that violate them are left out.
+    Continuous time: when a step is a sample taken every `period` seconds and
+    each variable changes at most `lipschitz` per second (one number, or
+    {variable: number}), the refinement is checked between the samples too:
+    what `refined` assumes and `abstract` guarantees is made stricter, what
+    is known is made weaker (chase_cps.sampled). Intervals may then be
+    written with times: G[0s,2s], F[0ms,500ms]."""
+    if lipschitz is not None or period is not None:
+        refined, abstract = _continuous(refined, abstract, period, lipschitz)
     return chase_cps.refines(refined.build(), abstract.build(), backend, context=context,
                              timeout=timeout).to_dict()
+
+
+def _continuous(refined: ContractSpec, abstract: ContractSpec, period, lipschitz):
+    """The two contracts read at the samples (see refines)."""
+    from chase_cps import sampled
+    if period is None:
+        raise ValueError("give the period: the time between two samples, in seconds")
+
+    def read(c: ContractSpec, assumptions: str, guarantees: str) -> ContractSpec:
+        def terms(fs, role):
+            out = []
+            for f in fs:
+                f = sampled.in_steps(f, period)
+                if lipschitz is None:
+                    out.append(f)
+                    continue
+                try:
+                    out.append(sampled.sampled(f, lipschitz, period, known=role == "known"))
+                except sampled.SampledError as e:
+                    if role == "show":
+                        raise ValueError(f"{c.name}: {f}: {e}") from None
+                    out.append(f)       # a known term on the samples (x' = x + u) stays
+            return out
+        return c.model_copy(update={"assumptions": terms(c.assumptions, assumptions),
+                                    "guarantees": terms(c.guarantees, guarantees)})
+    return read(refined, "show", "known"), read(abstract, "known", "show")
 
 
 @tool
@@ -746,6 +787,68 @@ def rtl_ports(rtl: RTLSpec) -> dict:
     outputs = {v: t for v, t in m.variables.items() if v not in m.ivars and v != reset}
     return {"name": m.name, "inputs": inputs, "outputs": outputs, "reset": reset,
             "start": m.start}
+
+
+# C programs and SMV models with their specifications ----------------------
+
+def _file(text: str | None, path: str | None, suffix: str, read):
+    """read(path) of the file given as text or as a path."""
+    if (text is None) == (path is None):
+        raise ValueError("give either text or path")
+    if path is not None:
+        return read(path)
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        f = os.path.join(tmp, {".smv": "model", ".c": "code"}.get(suffix, "file") + suffix)
+        with open(f, "w", encoding="utf-8") as out:
+            out.write(text)
+        return read(f)
+
+
+@tool
+def parse_c(text: str | None = None, path: str | None = None) -> dict:
+    """Read the contracts written in a C file (text or a file path), one per
+    function: the clauses of ESBMC (__ESBMC_requires, __ESBMC_ensures in the
+    body), of CBMC (__CPROVER_requires, __CPROVER_ensures after the
+    signature), or of ACSL (/*@ requires ...; ensures ...; */). The inputs are
+    the parameters, the outputs FUNCTION_out (the return value) and the
+    pointers written (*p is p). A function with no clause has a contract with
+    no terms: check_c checks it for overflow, division by zero, and the
+    like."""
+    found = _file(text, path, ".c", chase_cps.load_c)
+    return {"contracts": [c.to_dict() for c, _ in found.values()]}
+
+
+@tool
+def check_c(text: str | None = None, path: str | None = None,
+            functions: list[str] | None = None, timeout: float = 300) -> dict:
+    """Check each function of a C file (text or a file path) against the
+    contract written in its clauses (see parse_c), one call at a time, with
+    ESBMC or CBMC (whichever is installed): valid, or invalid with the values
+    of a failing call. A function with no clause is checked as code alone
+    (safe: no overflow, division by zero, or bad pointer). `functions`: the
+    ones to check (default: all)."""
+    def run(p):
+        out = {}
+        for name, (c, f) in chase_cps.load_c(p).items():
+            if functions and name not in functions:
+                continue
+            r = chase_cps.is_implementation(f, c, timeout=timeout).to_dict()
+            r["check"] = "safe" if not (c.assumptions or c.guarantees) else "implements"
+            out[name] = r
+        return out
+    return {"functions": _file(text, path, ".c", run)}
+
+
+@tool
+def parse_smv(text: str | None = None, path: str | None = None) -> dict:
+    """Read an SMV model with its specifications (LTLSPEC, INVARSPEC; text or
+    a file path) as a contract: the IVAR are its inputs, the VAR its outputs,
+    the specifications its guarantees. is_implementation with `smv` set to
+    the model checks it."""
+    from chase_cps import smvspec
+    found = _file(text, path, ".smv", smvspec.load_smv)
+    return {"contracts": [c.to_dict() for c, _ in found.values()]}
 
 
 # SystemVerilog Assertions ---------------------------------------------------

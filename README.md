@@ -43,6 +43,9 @@ satisfies, such as the axiom of an encoding of finite traces.
 
 - **refines**: whether a contract refines another one, and which part fails
   (assumptions or guarantees).
+  With `period` and `lipschitz` (how fast each variable changes), the
+  refinement is checked between the samples too, in continuous time; the
+  intervals may then be written with times (`G[0s,2s]`).
 - **verify**: whether the assumptions and the guarantees can hold together
   (A & G satisfiable), which implies compatibility and consistency;
   **is_compatible** (some environment satisfies the assumptions) and
@@ -101,6 +104,13 @@ Specifications:
   property` statements of SystemVerilog as a contract (the statements not
   read are listed with the reason), and write a contract as a checker module
   for any tool that reads SVA.
+- **parse_c**: read the contracts written in a C file, one per function:
+  the clauses of ESBMC, CBMC, or ACSL.
+- **check_c**: check each function of a C file against its own contract,
+  one call at a time, with ESBMC or CBMC; a function with no clause is
+  checked as code alone (overflow, division by zero).
+- **parse_smv**: read an SMV model with its `LTLSPEC` and `INVARSPEC` as a
+  contract.
 
 Diagrams:
 

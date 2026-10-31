@@ -44,7 +44,8 @@ def test_tools_are_listed():
             "is_realizable", "synthesize", "implies", "is_satisfiable", "is_implementation",
             "is_environment", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
-            "is_vacuous", "is_receptive", "visualize", "repair"} == asyncio.run(run())
+            "is_vacuous", "is_receptive", "visualize", "repair",
+            "parse_c", "check_c", "parse_smv"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -582,3 +583,46 @@ def test_repair_errors():
     err, text = call("repair", {"check": "refines", "refined": c,
                                 "parameters": {"k": {"low": 0, "high": 9}}})
     assert err and "abstract" in text
+
+
+C_FILE = """int clamp(int x)
+    __CPROVER_requires(x >= 0 && x <= 1000)
+    __CPROVER_ensures(__CPROVER_return_value <= 100)
+{ return x > 100 ? 100 : x; }
+
+int half(int x) { return x / 2; }
+"""
+
+
+def test_contracts_written_in_c():
+    error, out = call("parse_c", {"text": C_FILE})
+    assert not error, out
+    named = {c["name"]: c for c in out["contracts"]}
+    assert set(named) == {"clamp", "half"} and named["half"]["guarantees"] == []
+    from chase_cps.backends import ADAPTERS as A
+    if not (A["esbmc"].available() or A["cbmc"].available()):
+        pytest.skip("ESBMC or CBMC not installed")
+    error, out = call("check_c", {"text": C_FILE})
+    assert not error, out
+    assert out["functions"]["clamp"]["status"] == "valid"
+    assert out["functions"]["half"]["check"] == "safe"
+
+
+def test_an_smv_model_with_its_specifications():
+    smv = ("MODULE main\nIVAR go : boolean;\nVAR on : boolean;\nASSIGN init(on) := FALSE;\n"
+           "next(on) := go;\nLTLSPEC G (go -> X on)\n")
+    error, out = call("parse_smv", {"text": smv})
+    assert not error, out
+    (c,) = out["contracts"]
+    assert c["inputs"] == {"go": "bool"} and len(c["guarantees"]) == 1
+
+
+def test_refinement_in_continuous_time():
+    ports = {"inputs": {"u": [-1, 1]}, "outputs": {"x": [-30, 30]}}
+    plant = {"name": "Plant", "guarantees": ["x = 0", "G (x' = x + u)"], **ports}
+    req = lambda limit: {"name": "Req", "guarantees": [f"G[0s,8s] (x <= {limit})"], **ports}
+    status = lambda limit, **kw: call("refines", {"refined": plant, "abstract": req(limit),
+                                                  "period": 1, **kw})[1]["status"]
+    assert status(10) == "valid"                         # at the samples
+    assert status(10, lipschitz={"x": 1}) == "invalid"   # between them, not shown
+    assert status(11, lipschitz={"x": 1}) == "valid"
