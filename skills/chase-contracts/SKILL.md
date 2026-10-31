@@ -168,6 +168,13 @@ satisfies the contract, so `verify` would still find it.
    | SystemVerilog Assertions and RTL | `hardware.md` |
    | a diagram | `diagrams.md` |
 
+Repair through MCP: `parameters` is `{"k": {"low": 0, "high": 9, "integer":
+true}}` (the right column of the table above is the Python call). A constant
+inside `G` over real numbers can give unknown: projection does not read
+`G`, and the counterexamples may not converge. When the term is an
+invariant of one step (`G (stop <= dmax)`), repair the term without `G` too
+and say so; otherwise give a `time_limit` and report unknown as it is.
+
 Continuous time: `refines` with `period` and `lipschitz` answers valid (it
 holds between the samples too) or unknown (not shown: the margins are a
 sufficient condition, never a counterexample). Then run the same check
