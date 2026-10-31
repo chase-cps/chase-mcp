@@ -168,6 +168,17 @@ satisfies the contract, so `verify` would still find it.
    | SystemVerilog Assertions and RTL | `hardware.md` |
    | a diagram | `diagrams.md` |
 
+Continuous time: `refines` with `period` and `lipschitz` answers valid (it
+holds between the samples too) or unknown (not shown: the margins are a
+sufficient condition, never a counterexample). Then run the same check
+without `lipschitz` to see whether it fails at the samples already.
+
+C and SMV: `parse_c` and `check_c` take a C file with the clauses of ESBMC,
+CBMC, or ACSL. `parse_smv` reads IVAR as inputs and VAR as outputs (a free
+VAR is an output: tell the user to write an input as IVAR); it does not read
+enumerated types or DEFINE in a specification: rewrite them (integer ranges,
+the expression itself) in a copy, and say so.
+
 Do not make a check pass by adding `false` or contradictory assumptions.
 
 ## Examples

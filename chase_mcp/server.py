@@ -62,6 +62,11 @@ class ContractSpec(BaseModel):
                     "changes them)")
 
     def build(self) -> Contract:
+        from chase_cps import sampled
+        for f in self.assumptions + self.guarantees:
+            if sampled.has_times(f):
+                raise ValueError(f"{self.name}: {f}: an interval is written with times: give the "
+                                 "period (refines takes period, and lipschitz for continuous time)")
         try:
             return Contract.from_dict(self.model_dump())
         except ltl.LTLSyntaxError as e:
@@ -354,11 +359,23 @@ def refines(refined: ContractSpec, abstract: ContractSpec, timeout: float = 300,
     {variable: number}), the refinement is checked between the samples too:
     what `refined` assumes and `abstract` guarantees is made stricter, what
     is known is made weaker (chase_cps.sampled). Intervals may then be
-    written with times: G[0s,2s], F[0ms,500ms]."""
+    written with times: G[0s,2s], F[0ms,500ms]. The margins are a sufficient
+    condition: valid shows it in continuous time; otherwise the status is
+    unknown (not shown), never invalid; check without lipschitz to see
+    whether it fails at the samples."""
     if lipschitz is not None or period is not None:
         refined, abstract = _continuous(refined, abstract, period, lipschitz)
-    return chase_cps.refines(refined.build(), abstract.build(), backend, context=context,
-                             timeout=timeout).to_dict()
+    low, high = refined.build(), abstract.build()
+    r = chase_cps.refines(low, high, backend, context=context, timeout=timeout)
+    if lipschitz is not None:          # a failure of the margins is not a counterexample
+        from chase_cps.sampled import not_shown
+        r = not_shown(r)
+    out = r.to_dict()
+    free = sorted(set(low.inputs) - set(high.inputs) - set(high.outputs))
+    if free:                           # read by the refined one, given by nobody in the abstract one
+        out["note"] = (f"{', '.join(free)}: input{'s' if len(free) > 1 else ''} of {refined.name} that "
+                       f"{abstract.name} does not have; any value can come in (a wire missing?)")
+    return out
 
 
 def _continuous(refined: ContractSpec, abstract: ContractSpec, period, lipschitz):
@@ -493,6 +510,9 @@ def _model(smv, machine, controller, synthesized_from, contract: Contract, rtl=N
     if rtl is not None:
         return rtl.build()
     if smv is not None:
+        if any(k in smv for k in ("LTLSPEC", "INVARSPEC")):    # the model, without its specifications
+            from chase_cps import smvspec
+            return _file(smv, None, ".smv", smvspec.model)
         return chase_cps.Model.from_smv(smv)
     if machine is not None:
         return chase_cps.Model.from_dict(machine)
@@ -843,9 +863,12 @@ def check_c(text: str | None = None, path: str | None = None,
 @tool
 def parse_smv(text: str | None = None, path: str | None = None) -> dict:
     """Read an SMV model with its specifications (LTLSPEC, INVARSPEC; text or
-    a file path) as a contract: the IVAR are its inputs, the VAR its outputs,
-    the specifications its guarantees. is_implementation with `smv` set to
-    the model checks it."""
+    a file path) as a contract: the IVAR are its inputs, the VAR its outputs
+    (a VAR with no ASSIGN is still an output: write an input as IVAR), the
+    specifications its guarantees. is_implementation with `smv` set to the
+    model (its specifications are left out) checks it. Not read: enumerated
+    types (write them as integer ranges), DEFINE in a specification (write
+    the expression), CTL, and past operators; the error names the line."""
     from chase_cps import smvspec
     found = _file(text, path, ".smv", smvspec.load_smv)
     return {"contracts": [c.to_dict() for c, _ in found.values()]}
@@ -926,7 +949,10 @@ def visualize(contracts: list[ContractSpec] | None = None, text: str | None = No
     inside it. `draw` names the contracts to draw instead; NAME+NAME draws
     their composition, a box with the contracts inside, wired by the names
     of their variables. `refines` lists [refined, abstract] pairs: the
-    refined one is drawn inside the abstract one.
+    refined one is drawn inside the abstract one, and checked against it. A
+    decomposition is drawn and checked only when a pair names it:
+    refines: [["Sensor+Controller", "Cruise"]]. An input of a part that no
+    other part or input of the box drives is marked (its name in orange).
     `environments` lists [model file, contract] pairs: the state machine
     (SMV, JSON, or a controller of slugs) is drawn on the left of the
     contract, as an environment. `check` (the default) checks that the

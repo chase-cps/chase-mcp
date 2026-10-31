@@ -34,7 +34,15 @@ How to draw:
   (`crossing.ltl` gives `crossing.results.json`): the user sees them in the editor, and a contract
   that has not changed is not checked again. `draw` and `refines` give another
   arrangement: `draw: ["A+B"]` draws the composition of A and B,
-  `refines: [[refined, abstract]]` draws the refined one inside.
+  `refines: [[refined, abstract]]` draws the refined one inside. A
+  decomposition is drawn inside its contract, and checked, only when a pair
+  names it: `refines: [["Sensor+Controller", "Cruise"]]`. An input of a part
+  that nothing drives is marked inside the box (its name in orange, after a
+  dashed stub): name it to the user, it is often the cause of a failed
+  refinement.
+- Before describing a page to the user, open it and look at it (a browser,
+  or a screenshot with a headless browser): say what the user will see, and
+  not only what the tool returned.
 - In a shell, without the server: write the contracts to a `.ltl` file and
   run `chase-cps view FILE.ltl --check`, which writes `FILE.html`. With the
   CHASE extension of VS Code, the user sees the diagram beside the file,

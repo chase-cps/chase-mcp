@@ -624,5 +624,20 @@ def test_refinement_in_continuous_time():
     status = lambda limit, **kw: call("refines", {"refined": plant, "abstract": req(limit),
                                                   "period": 1, **kw})[1]["status"]
     assert status(10) == "valid"                         # at the samples
-    assert status(10, lipschitz={"x": 1}) == "invalid"   # between them, not shown
+    assert status(10, lipschitz={"x": 1}) == "unknown"   # between them, not shown
     assert status(11, lipschitz={"x": 1}) == "valid"
+
+
+def test_refines_names_the_inputs_the_abstract_contract_does_not_have():
+    parts = {"name": "Parts", "inputs": {"raw": "bool", "enable": "bool"}, "outputs": {"y": "bool"},
+             "guarantees": ["G ((raw & enable) -> y)"]}
+    spec = {"name": "Spec", "inputs": {"raw": "bool"}, "outputs": {"y": "bool"},
+            "guarantees": ["G (raw -> y)"]}
+    error, out = call("refines", {"refined": parts, "abstract": spec})
+    assert not error and out["status"] == "invalid" and "enable" in out["note"]
+
+
+def test_times_without_a_period():
+    c = {"name": "Req", "outputs": {"x": [0, 9]}, "guarantees": ["G[0s,5s] (x <= 5)"]}
+    error, out = call("refines", {"refined": c, "abstract": c})
+    assert error and "give the period" in out
