@@ -535,7 +535,9 @@ def is_implementation(contract: ContractSpec, implementation: str | None = None,
     -> G must be valid;
     or a state machine, every behavior of which must satisfy A -> G. A
     machine that refuses inputs can implement a contract only because of
-    that: check it with is_receptive. valid, or invalid with a trace.
+    that: check it with is_receptive. valid, or invalid with a trace and,
+    in details.violated, the guarantees that this trace breaks (others may
+    fail on other behaviors: check a term alone to know).
     `context`: formulas that every behavior satisfies (e.g. an axiom of an
     encoding, a physical law); the behaviors that violate them are left out."""
     c = contract.build()

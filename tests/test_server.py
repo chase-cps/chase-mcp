@@ -350,7 +350,8 @@ def test_remove_redundant_for_synthesis():
     bad = {"name": "Bad", "inputs": {"x": "bool"}, "outputs": {"g": "bool"},
            "assumptions": ["G F (x & !x)"], "guarantees": ["G g", "G !g"]}
     err, r = call("remove_redundant", {"contract": bad})
-    assert not err and r["contract"]["guarantees"] == []
+    # terms in conflict are all kept, and the reason says so
+    assert not err and r["contract"]["guarantees"] == ["G g", "G !g"] and "conflict" in r["reason"]
     err, r = call("remove_redundant", {"contract": bad, "synth": True})
     assert not err and r["contract"]["guarantees"] == ["G g", "G !g"]
     err, r = call("remove_redundant", {"contract": c, "synth": True, "context": ["G req"]})
