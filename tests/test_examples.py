@@ -32,7 +32,7 @@ def test_example(path):
     if "spec" in example:
         env["spec"] = example["spec"]
     for step in example["steps"]:
-        if step.get("needs") and not find(step["needs"]):
+        if step.get("needs") and not _have(step["needs"]):
             continue
         err, result = call(step["tool"], resolve(step["args"], env))
         assert not err, f'{step["tool"]}: {result}'
@@ -42,6 +42,14 @@ def test_example(path):
             env[step["save"]] = result
         if step.get("save_contracts"):
             env.update({c["name"]: c for c in result["contracts"]})
+
+
+def _have(need: str) -> bool:
+    """An executable, or a Python module (python:NAME)."""
+    if need.startswith("python:"):
+        import importlib.util
+        return importlib.util.find_spec(need[len("python:"):]) is not None
+    return find(need) is not None
 
 
 def _same(got, want) -> bool:

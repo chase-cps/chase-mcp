@@ -44,7 +44,7 @@ def test_tools_are_listed():
             "is_realizable", "synthesize", "implies", "is_satisfiable", "is_implementation",
             "is_environment", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
-            "is_vacuous", "is_receptive", "visualize"} == asyncio.run(run())
+            "is_vacuous", "is_receptive", "visualize", "repair"} == asyncio.run(run())
 
 
 def test_refine_valid_and_counterexample():
@@ -489,3 +489,96 @@ def test_visualize(tmp_path):
     assert not err and '"open": true' in out.read_text()
     err, r = call("visualize", {"contracts": [a], "text": "NAME: s;"})
     assert err and "one of" in r
+
+
+def _z3():
+    try:
+        import z3  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+z3_only = pytest.mark.skipif(not _z3(), reason="z3 not installed")
+
+
+@z3_only
+def test_repair_reals_holds_and_impossible():
+    # Brake 1 of the braking demo: 3.05 on its own path, plus a delay of 1
+    path = {"name": "Path", "inputs": {"t": "real", "d": "real"}, "outputs": {"b": "real"},
+            "assumptions": ["d - t <= 1"], "guarantees": ["b - t <= d - t + 3.05"]}
+    bound = {"name": "Bound", "inputs": {"t": "real", "d": "real"}, "outputs": {"b": "real"},
+             "constants": {"lam": 4}, "assumptions": ["d - t <= 1"],
+             "guarantees": ["b - t <= lam"]}
+    err, r = call("repair", {"check": "refines", "refined": path, "abstract": bound,
+                             "parameters": {"lam": {"low": 0, "high": 10}}})
+    assert not err and r["status"] == "repaired" and r["values"] == {"lam": 4.05}, r
+    assert r["optimal"] and r["check"]["status"] == "valid"
+    # the value found passes the direct check, and repair at that value is a verification
+    fixed = {**bound, "constants": {"lam": 4.05}}
+    assert call("refines", {"refined": path, "abstract": fixed})[1]["status"] == "valid"
+    err, r = call("repair", {"check": "refines", "refined": path, "abstract": fixed,
+                             "parameters": {"lam": {"low": 0, "high": 10}}})
+    assert not err and r["status"] == "holds" and r["cost"] == 0
+    err, r = call("repair", {"check": "refines", "refined": path, "abstract": bound,
+                             "parameters": {"lam": {"low": 0, "high": 3}}})
+    assert not err and r["status"] == "impossible"
+
+
+def test_repair_integer_ltl_against_direct_checks():
+    spec = """NAME: wait;
+CONTRACT Counter:
+    output integer (0:9) variable n;
+    Assumptions:
+        true;
+    Guarantees:
+        n = 0;
+        G ((n < 3 -> n' = n + 1) & (n >= 3 -> n' = n));
+CONTRACT Bound:
+    output integer (0:9) variable n;
+    integer constant k 1;
+    Assumptions:
+        true;
+    Guarantees:
+        G (n <= k);
+"""
+    err, d = call("parse_spec", {"text": spec})
+    assert not err, d
+    cs = {c["name"]: c for c in d["contracts"]}
+    counter, bound = cs["Counter"], cs["Bound"]
+    assert bound["constants"] == {"k": 1}
+    if not _z3():
+        err, r = call("repair", {"check": "refines", "refined": counter, "abstract": bound,
+                                 "parameters": {"k": {"low": 0, "high": 9, "integer": True}}})
+        assert not err and r["status"] == "unknown" and "z3" in r["reason"]
+        return
+    err, r = call("repair", {"check": "refines", "refined": counter, "abstract": bound,
+                             "parameters": {"k": {"low": 0, "high": 9, "integer": True}}})
+    assert not err and r["status"] == "repaired" and r["values"] == {"k": 3}, r
+    passing = [k for k in range(10) if call("refines", {
+        "refined": counter, "abstract": {**bound, "constants": {"k": k}}})[1]["status"] == "valid"]
+    assert min(passing) == 3
+
+
+@z3_only
+def test_repair_existential_and_implementation():
+    c = {"name": "C", "outputs": {"x": [0, 9]}, "constants": {"k": 7},
+         "guarantees": ["G (x >= k)", "G (x <= 5)"]}
+    err, r = call("repair", {"check": "verify", "contract": c,
+                             "parameters": {"k": {"low": 0, "high": 9, "integer": True}}})
+    assert not err and r["status"] == "repaired" and r["values"] == {"k": 5}, r
+    spec = {"name": "S", "outputs": {"y": [0, 9]}, "constants": {"k": 1},
+            "guarantees": ["G (y <= k)"]}
+    err, r = call("repair", {"check": "impl", "contract": spec, "implementation": "G (y = 2)",
+                             "parameters": {"k": {"low": 0, "high": 9, "integer": True}}})
+    assert not err and r["status"] == "repaired" and r["values"] == {"k": 2}, r
+
+
+def test_repair_errors():
+    c = {"name": "C", "outputs": {"x": [0, 9]}, "constants": {"k": 7}, "guarantees": ["G (x <= k)"]}
+    err, text = call("repair", {"check": "verify", "contract": c,
+                                "parameters": {"m": {"low": 0, "high": 9}}})
+    assert err and "not a constant" in text
+    err, text = call("repair", {"check": "refines", "refined": c,
+                                "parameters": {"k": {"low": 0, "high": 9}}})
+    assert err and "abstract" in text

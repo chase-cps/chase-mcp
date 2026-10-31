@@ -82,6 +82,17 @@ in general.
   liveness guarantee asks for (vacuity in synthesis), with that strategy and
   the assumptions that allow it.
 
+Repair:
+
+- **repair**: the values of named constants (the `constants` of a contract,
+  used by name in its formulas) that make a check pass (`refines`, `impl`,
+  `env`, `verify`, `compat`, `consist`), at the least change from their
+  present values, or at the least `minimize` or greatest `maximize`. It
+  optimizes with z3 (`pip install "chase-cps[z3]"`), and every value it
+  returns has passed the check itself. The status is `holds` (the present
+  values pass: a verification), `repaired`, `impossible` (no values in the
+  ranges), or `unknown`.
+
 Specifications:
 
 - **parse_spec** and **to_spec**: read and write contracts in the logics

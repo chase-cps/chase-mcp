@@ -1,0 +1,32 @@
+{
+  "title": "Repair: the values of named constants that make a check pass",
+  "shows": "A bound that a design breaks, the least change that makes the refinement hold, a repair that is a verification (holds), and a range with no value that works (impossible).",
+  "contracts": {
+    "Counter": {"name": "Counter", "outputs": {"n": [0, 9]},
+                "guarantees": ["n = 0", "G ((n < 3 -> n' = n + 1) & (n >= 3 -> n' = n))"]},
+    "Bound": {"name": "Bound", "outputs": {"n": [0, 9]}, "constants": {"k": 1},
+              "guarantees": ["G (n <= k)"]},
+    "Bound3": {"name": "Bound", "outputs": {"n": [0, 9]}, "constants": {"k": 3},
+               "guarantees": ["G (n <= k)"]}
+  },
+  "steps": [
+    {"tool": "refines", "args": {"refined": "$Counter", "abstract": "$Bound"},
+     "expect": {"status": "invalid", "failed": "guarantees"},
+     "note": "The counter counts to 3; the bound k = 1 is too small."},
+    {"tool": "repair", "args": {"check": "refines", "refined": "$Counter", "abstract": "$Bound",
+                                "parameters": {"k": {"low": 0, "high": 9, "integer": true}}},
+     "needs": "python:z3",
+     "expect": {"status": "repaired", "values": {"k": 3}, "cost": 2, "optimal": true},
+     "note": "The least change of k: 3. The value has passed the refinement itself (the check in the result). Propose it to the user before writing it: Bound is a requirement."},
+    {"tool": "repair", "args": {"check": "refines", "refined": "$Counter", "abstract": "$Bound3",
+                                "parameters": {"k": {"low": 0, "high": 9, "integer": true}}},
+     "needs": "python:z3",
+     "expect": {"status": "holds", "values": {"k": 3}, "cost": 0},
+     "note": "With k = 3 the refinement holds: nothing to change. Repair is then a verification."},
+    {"tool": "repair", "args": {"check": "refines", "refined": "$Counter", "abstract": "$Bound",
+                                "parameters": {"k": {"low": 0, "high": 2, "integer": true}}},
+     "needs": "python:z3",
+     "expect": {"status": "impossible"},
+     "note": "No k in 0..2 works: widen the range, or change another part (ask the user)."}
+  ]
+}

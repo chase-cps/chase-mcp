@@ -1,6 +1,6 @@
 ---
 name: chase-contracts
-description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, explain a counterexample from these checks, decompose a system into parts and repair the contracts that fail, or draw contracts, refinements, and the results of the checks as a diagram.
+description: Write, check, diagnose, and fix assume-guarantee contracts in LTL with CHASE. Use when the user wants to formalize requirements of a system or component as contracts, check that component contracts refine a system contract, find the contract of a missing component (quotient), merge or separate viewpoints, check consistency, compatibility, GR(1) realizability, well-separation, or vacuity, check a state machine (SMV, JSON, or a synthesized controller) against a contract and its receptiveness, find which terms cause a failure (unsat or unrealizable core), remove redundant terms, synthesize a controller, explain a counterexample from these checks, find the values of named constants (a deadline, a threshold, a bound) that make a check pass (repair), decompose a system into parts and repair the contracts that fail, or draw contracts, refinements, and the results of the checks as a diagram.
 ---
 
 # Assume-guarantee contracts with CHASE
@@ -39,6 +39,8 @@ contract, not that the contract is wrong in general.
 | `is_realizable`, `synthesize` | `chase_cps.is_realizable(c)`, `chase_cps.synthesize(c)` |
 | `unrealizable_core` | `chase_cps.unrealizable_core(c)`; or `core=True` on `is_realizable` |
 | `is_well_separated`, `is_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.is_vacuous(c)` |
+| **Repair of named constants (z3)** | |
+| `repair` | `chase_cps.repair(check, *args, parameters={"k": (0, 9, "int")})` |
 | **Specifications in the CHASE language** | |
 | `parse_spec`, `to_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 | **SystemVerilog Assertions** | |
@@ -87,6 +89,10 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
 - Assumptions are what the component expects of its environment; guarantees
   are what it promises when the assumptions hold. Both lists are read as
   conjunctions.
+- Named constants: `"constants": {"k": 2}`, and `k` in the formulas
+  (`G (w <= k)`). In a `.ltl` file: `integer constant k 2;` or
+  `real constant lam 4.5;`, after the variables. The checks use the
+  values; `repair` changes them (`design-loop.md`, step 5).
 - Contracts are read as saturated: the allowed behaviors are those of
   A -> G. A contract with false assumptions allows everything.
 - Variables with the same name in two contracts are the same variable: this
@@ -151,7 +157,7 @@ satisfies the contract, so `verify` would still find it.
    | Task | Read |
    |---|---|
    | requirements in natural language | `requirements.md` |
-   | a design with several parts, a missing part, contracts that fail and must be fixed | `design-loop.md` |
+   | a design with several parts, a missing part, contracts that fail and must be fixed, a number to repair | `design-loop.md` |
    | what a result says; implementations, environments, viewpoints, changing and cleaning up contracts; traces | `checks.md` |
    | realizability, synthesis, well-separation, vacuity; the GR(1) fragment | `synthesis.md` |
    | SystemVerilog Assertions and RTL | `hardware.md` |
@@ -185,3 +191,6 @@ explains it. Read the one closest to the task before starting:
 - `airspeed.json`: requirements with a real variable compared at two steps,
   checked with the SMT engine of nuXmv; the requirements in conflict and a
   behavior with real values.
+- `repair.json`: a bound that a design breaks, the least change of a named
+  constant that makes the refinement hold, a repair that holds (a
+  verification), and a range where no value works.

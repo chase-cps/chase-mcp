@@ -8,6 +8,10 @@ A contract is given as JSON::
      "assumptions": ["G F !req"],
      "guarantees": ["G (req -> F grant)"]}
 
+A contract may name constants ("constants": {"k": 2}) and use the names in
+its formulas; repair finds the values of the constants that make a check
+pass.
+
 Variables are Boolean ("bool"), bounded integers [low, high], reals
 ("real"), or words ("word[8]", "signed word[8]": bit vectors whose arithmetic
 wraps around). Formulas use the standard LTL syntax: ! & | -> <-> G F X U R
@@ -52,6 +56,10 @@ class ContractSpec(BaseModel):
                                    description="LTL formulas, read as a conjunction")
     guarantees: list[str] = Field(default_factory=list,
                                   description="LTL formulas, read as a conjunction")
+    constants: dict[str, Union[int, float]] = Field(
+        default_factory=dict,
+        description="Named constants: name -> value; the formulas use the names (repair "
+                    "changes them)")
 
     def build(self) -> Contract:
         try:
@@ -103,6 +111,15 @@ realizable/unrealizable, or unknown with a reason (e.g. a timeout). A failed
 check comes with a counterexample trace: the states of `prefix`, then the
 states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
+
+Repair: repair finds the values of named constants (the "constants" of a
+contract, used by name in its formulas) that make a check pass (refines,
+impl, env, verify, compat, consist), changing them as little as possible
+(or minimizing a term). It optimizes with z3, and every value it returns
+is checked by the check itself. status: holds (the present values pass:
+repair is then a verification), repaired (values), impossible (no values
+in the ranges), or unknown. Repair changes only the constants it is given:
+a requirement is changed only with the consent of the user.
 
 Diagrams: visualize draws contracts as a web page (composition side by side,
 refinement as nesting, the results of the checks on the boxes) and returns
@@ -486,6 +503,59 @@ def is_environment(contract: ContractSpec, environment: str | None = None,
         raise ValueError("give the environment as a formula or as a state machine")
     return chase_cps.is_environment(m if m is not None else environment, c, backend,
                                     context=context, timeout=timeout).to_dict()
+
+
+class Range(BaseModel):
+    """The values a constant may take in a repair."""
+    low: Union[int, float]
+    high: Union[int, float]
+    integer: bool = Field(False, description="an integer constant (a real by default)")
+
+
+@tool
+def repair(check: Literal["refines", "impl", "env", "verify", "compat", "consist"],
+           parameters: dict[str, Range], contract: ContractSpec | None = None,
+           refined: ContractSpec | None = None, abstract: ContractSpec | None = None,
+           implementation: str | None = None, environment: str | None = None,
+           smv: str | None = None, machine: dict | None = None, rtl: RTLSpec | None = None,
+           minimize: str | None = None, maximize: str | None = None,
+           method: Literal["auto", "projection", "counterexamples", "enumeration"] = "auto",
+           rounds: int = 50, timeout: float = 300,
+           backend: Union[Backend, Literal["z3"]] = "auto") -> dict:
+    """The values of named constants, within their ranges, that make a check
+    pass, at the least change from their present values (the sum of
+    |new - present|), or at the least `minimize` / the greatest `maximize`
+    (a term over the constants). `parameters`: the constants that may
+    change, {name: {low, high, integer}}; they are among the `constants` of
+    the contracts. The check: refines (`refined`, `abstract`), impl or env
+    (`contract` and `implementation` / `environment` as a formula, or `smv`,
+    `machine`, `rtl`), verify, compat, consist (`contract`).
+    status: holds (the present values pass), repaired (`values`, `cost`,
+    `optimal`), impossible (no values in the ranges pass), or unknown with a
+    reason. `check` is the result of the check with the values; the method
+    (projection, counterexamples, witnesses, enumeration) and its rounds are
+    given."""
+    if check == "refines":
+        if refined is None or abstract is None:
+            raise ValueError("refines: give refined and abstract")
+        args = (refined.build(), abstract.build())
+    elif contract is None:
+        raise ValueError(f"{check}: give the contract")
+    elif check in ("impl", "env"):
+        c = contract.build()
+        formula = implementation if check == "impl" else environment
+        m = _model(smv, machine, None, None, c, rtl)
+        if (m is None) == (formula is None):
+            raise ValueError(f"give the {'implementation' if check == 'impl' else 'environment'}"
+                             " as a formula or as a state machine")
+        args = (m if m is not None else formula, c)
+    else:
+        args = (contract.build(),)
+    spec = {k: (r.low, r.high, "int") if r.integer else (r.low, r.high)
+            for k, r in parameters.items()}
+    return chase_cps.repair(check, *args, parameters=spec, minimize=minimize, maximize=maximize,
+                            backend=backend, method=method, rounds=rounds,
+                            timeout=timeout).to_dict()
 
 
 @tool

@@ -59,8 +59,40 @@ When a check fails, change only what the core or the trace points to:
   a part, or the system asks for too much.
 - Unrealizable: the core and the counter-strategy (`synthesis.md`). Weaken
   a guarantee in the core, or add the assumption that is missing.
-- A conflict about a number (a deadline, a threshold, a range): say which
-  value the trace needs, and change the number, not the form of the term.
+- A conflict about a number (a deadline, a threshold, a range): change the
+  number, not the form of the term, and let `repair` find it (below).
+
+### Repair of a number
+
+`repair` finds the values of named constants that make a check pass
+(`refines`, `impl`, `env`, `verify`, `compat`, `consist`), as close as
+possible to the present values, by optimization (z3). Every value it
+returns has passed the check itself.
+
+1. Name the number in the contract: `"constants": {"lam": 4}` and `lam` in
+   the term (`b - t <= lam`); in a `.ltl` file, `real constant lam 4;`.
+2. Call `repair` with the check that failed and the constants that may
+   change, each with a range: `"parameters": {"lam": {"low": 0, "high":
+   10}}` (add `"integer": true` for an integer). Give only the constants
+   that the user lets change; give the constants of a part rather than
+   those of a requirement.
+3. Read `status`:
+   - `holds`: the present values pass; the check holds and nothing changes
+     (repair is then a verification).
+   - `repaired`: `values` pass, at the least change (`cost`); `optimal`
+     says whether no smaller change exists in the ranges. `check` is the
+     result of the check with the values.
+   - `impossible`: no values in the ranges pass. Widen a range, let
+     another constant change, or change the form of a term (ask the user).
+   - `unknown`: with the `reason` (a timeout, a back end missing).
+4. Several constants that may change: give them in one call; the cost is
+   the sum of the changes. With `minimize` or `maximize` (a term over the
+   constants), the cost is that term. To compare repairs (the bound of a
+   part, or the requirement), run one repair for each and show both.
+5. Propose the values to the user in one sentence, with what they change
+   ("Brake 1 may start 4.05 ms after its timestamp, not 4"). A constant of
+   a requirement changes only when the user agrees. Then write the value
+   in the contract and run the checks that read it.
 
 After a change, run the check that failed again, and the checks of the
 parts that read a signal you changed.
