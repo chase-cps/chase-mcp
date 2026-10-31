@@ -520,7 +520,7 @@ def repair(check: Literal["refines", "impl", "env", "verify", "compat", "consist
            smv: str | None = None, machine: dict | None = None, rtl: RTLSpec | None = None,
            minimize: str | None = None, maximize: str | None = None,
            method: Literal["auto", "projection", "counterexamples", "enumeration"] = "auto",
-           rounds: int = 50, timeout: float = 300,
+           rounds: int | None = None, timeout: float = 300, time_limit: float | None = None,
            backend: Union[Backend, Literal["z3"]] = "auto") -> dict:
     """The values of named constants, within their ranges, that make a check
     pass, at the least change from their present values (the sum of
@@ -534,7 +534,8 @@ def repair(check: Literal["refines", "impl", "env", "verify", "compat", "consist
     `optimal`), impossible (no values in the ranges pass), or unknown with a
     reason. `check` is the result of the check with the values; the method
     (projection, counterexamples, witnesses, enumeration) and its rounds are
-    given."""
+    given. ``time_limit`` (seconds) stops the whole repair: unknown, with the
+    least cost proved so far (``bound``)."""
     if check == "refines":
         if refined is None or abstract is None:
             raise ValueError("refines: give refined and abstract")
@@ -555,7 +556,7 @@ def repair(check: Literal["refines", "impl", "env", "verify", "compat", "consist
             for k, r in parameters.items()}
     return chase_cps.repair(check, *args, parameters=spec, minimize=minimize, maximize=maximize,
                             backend=backend, method=method, rounds=rounds,
-                            timeout=timeout).to_dict()
+                            timeout=timeout, time_limit=time_limit).to_dict()
 
 
 @tool
