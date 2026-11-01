@@ -172,14 +172,13 @@ satisfies the contract, so `verify` would still find it.
    "Telling the user" in `checks.md`.
 
 Repair through MCP: `parameters` is `{"k": {"low": 0, "high": 9, "integer":
-true}}` (the right column of the table above is the Python call). A constant
-inside `G` over real numbers can give unknown: projection does not read
-`G`, and the counterexamples may not converge. When the term is an
-invariant of one step (`G (stop <= dmax)`), repair the term without `G` too
-and say so, then run the check with `G` on the values found: without `G`
-more values pass (a trace can break different terms at different steps), so
-the values are a repair only when the check with `G` passes. Otherwise give
-a `time_limit` and report unknown as it is.
+true}}` (the right column of the table above is the Python call). Constants
+inside invariants of one step (`G (stop <= dmax)`, `F` of one step, a
+condition on the first step) are repaired exactly and fast (method
+`copies`, chosen by itself). Do not remove `G` by hand: without it more
+values pass. With `X`, `U`, or a state machine, the repair goes by
+counterexamples, which may not end with several real constants: give a
+`time_limit` and report unknown as it is.
 
 Continuous time: `refines` with `period` and `lipschitz` answers valid (it
 holds between the samples too) or unknown (not shown: the margins are a
