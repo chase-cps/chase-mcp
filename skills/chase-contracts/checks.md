@@ -94,3 +94,29 @@ counterexample to the user step by step ("at step 2 req is true, and grant
 stays false in the loop"), point to the requirement it violates, and propose
 a change. Do not make a check pass by adding `false` or contradictory
 assumptions.
+
+## Telling the user
+
+Report a result in the words of the requirements, not of the formulas. The
+table of the translation that the user confirmed (`requirements.md`,
+section 5) maps each term back to a requirement: name the requirement by its
+number and its text, the variables by the names the user gives them, and
+the steps in the unit of time of the user (say how many seconds a step is).
+
+Say which parts of a result are certain and which come from one trace:
+
+- `valid`, a realizable contract, and a core hold for every behavior: say
+  them as facts ("R2 and R5 cannot hold together").
+- `violated` lists the terms that this counterexample breaks. Other terms
+  can fail on other behaviors, and the terms not listed are not shown to
+  hold: say "in this counterexample".
+- `unknown` is unknown: say why (`reason`), and do not guess the answer.
+
+Not: "`G (alarm -> F[0,3] !pump)` is violated at step 2 of the trace,
+robustness -1". But: "R2 (the pump stops within 3 s of an alarm) does not
+hold: in this counterexample the alarm goes off at 2 s and the pump is
+still on at 6 s. It is one counterexample; other requirements may fail in
+other cases." A core: "R2 and R5 cannot hold together: R5 keeps the pump on
+in maintenance mode, and an alarm can go off in maintenance mode."
+Show the formulas too when the user asks for them, or when the translation
+of a term is in doubt.
