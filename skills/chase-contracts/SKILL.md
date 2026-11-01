@@ -99,7 +99,11 @@ non-commercial use), or set `CHASE_NUXMV` to the executable.
   `real constant lam 4.5;`, after the variables. The checks use the
   values; `repair` changes them (`design-loop.md`, step 5).
 - Contracts are read as saturated: the allowed behaviors are those of
-  A -> G. A contract with false assumptions allows everything.
+  A -> G. A contract with false assumptions allows everything. When you
+  reason about a contract yourself (explain a result, compare two
+  contracts, write a guarantee), use A -> G, not G alone: a guarantee that
+  looks wrong may hold because the behavior is outside A. Do not copy the
+  assumptions into the guarantees; the tools saturate.
 - Variables with the same name in two contracts are the same variable: this
   is how components are connected. No variable can be an output of two
   composed contracts.
