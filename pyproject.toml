@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest"]
+z3 = ["chase-cps[z3]>=0.7.0"]
 
 [project.scripts]
 chase-mcp = "chase_mcp.server:main"

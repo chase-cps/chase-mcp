@@ -126,3 +126,20 @@ Keep the contracts in a specification file (`.ltl`). Drawn with
 next to the file (`crossing.ltl` gives `crossing.results.json`), and a
 contract that has not changed is not checked again. In the loop, draw again after each change: only the
 checks of what changed run.
+
+## 6. Optimization over behaviors
+
+Use `minimize` or `maximize` with an `objective` and a `contract` to find
+an expression's extremum over behaviors satisfying both assumptions and
+guarantees. Alternatively give `subject_to` formulas and `variables` with
+their types. The temporal operators must have finite step intervals.
+For a numeric property, `minimize` computes worst-case robustness. A
+negative value has a violating witness. `maximize` computes best-case
+robustness, so a positive value does not establish that every behavior
+satisfies the property. Distinguish these tools from the objective options
+of `repair`, which search over parameter values.
+
+Read the result status before using its value: `optimal` means the bound
+is reached, `not_attained` is an infimum or supremum, `unbounded` has no
+finite bound, and `infeasible` means there is no admissible behavior.
+`unknown` provides no optimum. If z3 is missing, install `chase-mcp[z3]`.

@@ -41,6 +41,8 @@ contract, not that the contract is wrong in general.
 | `is_well_separated`, `is_vacuous` | `chase_cps.is_well_separated(c)`, `chase_cps.is_vacuous(c)` |
 | **Repair of named constants (z3)** | |
 | `repair` | `chase_cps.repair(check, *args, parameters={"k": (0, 9, "int")})` |
+| **Expression and property robustness optimization (z3)** | |
+| `minimize`, `maximize` | `chase_cps.minimize(objective, contract)`, `chase_cps.maximize(objective, contract)` |
 | **Specifications in the CHASE language** | |
 | `parse_spec`, `to_spec` | `chase_cps.load_spec(path)`, `chase_cps.parse_spec(text)`, `chase_cps.to_spec(contracts)` |
 | **SystemVerilog Assertions** | |
@@ -227,3 +229,5 @@ explains it. Read the one closest to the task before starting:
 - `repair.json`: a bound that a design breaks, the least change of a named
   constant that makes the refinement hold, a repair that holds (a
   verification), and a range where no value works.
+- `optimization.json`: expression optimization and worst-case versus best-case
+  property robustness over a bounded horizon.

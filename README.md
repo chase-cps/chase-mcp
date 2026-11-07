@@ -96,6 +96,18 @@ Repair:
   values pass: a verification), `repaired`, `impossible` (no values in the
   ranges), or `unknown`.
 
+Optimization:
+
+- **minimize** and **maximize**: optimize an expression, or the robustness
+  of a numeric property, under a contract's assumptions and guarantees.
+  Alternatively give `subject_to` formulas and `variables` with their types.
+  Temporal operators must have finite step intervals. Minimizing a
+  property's robustness gives its worst case; maximizing it gives its best
+  case. The result includes the bound and a witness where available, with
+  status `optimal`, `not_attained`, `unbounded`, `infeasible`, or `unknown`.
+  These optimize behaviors; the `minimize` / `maximize` options of **repair**
+  instead optimize parameter values.
+
 Specifications:
 
 - **parse_spec** and **to_spec**: read and write contracts in the logics
@@ -164,6 +176,9 @@ it. Otherwise:
 `$> pip install chase-mcp`
 
 and use `chase-mcp` in place of `uvx chase-mcp` below.
+
+For parameter repair and robustness or expression optimization, install
+`pip install "chase-mcp[z3]"`, or run `uvx --from "chase-mcp[z3]" chase-mcp`.
 
 The development version is installed from the repositories:
 
@@ -237,7 +252,7 @@ the tests, so the results they state are the ones CHASE returns.
 
 ## Testing
 
-`$> pip install ".[test]"`
+`$> pip install ".[test,z3]"`
 
 `$> pytest`
 

@@ -44,7 +44,7 @@ def test_tools_are_listed():
             "is_realizable", "synthesize", "implies", "is_satisfiable", "is_implementation",
             "is_environment", "remove_redundant", "parse_spec", "to_spec", "parse_sva", "to_sva", "rtl_ports", "imply", "coimply",
             "invert", "assume", "ensure", "unsat_core", "unrealizable_core", "is_well_separated",
-            "is_vacuous", "is_receptive", "visualize", "repair",
+            "is_vacuous", "is_receptive", "visualize", "repair", "minimize", "maximize",
             "parse_c", "check_c", "parse_smv"} == asyncio.run(run())
 
 

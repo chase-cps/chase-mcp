@@ -1,0 +1,21 @@
+{
+  "title": "Expression and worst-case property robustness optimization",
+  "contracts": {
+    "Range": {
+      "name": "Range",
+      "outputs": {"x": "real"},
+      "guarantees": ["G[0,2] (x >= 0)", "G[0,2] (x <= 5)"]
+    }
+  },
+  "steps": [
+    {"tool": "minimize", "args": {"objective": "G[0,2] (x <= 3)", "contract": "$Range"},
+     "needs": "python:z3", "expect": {"status": "optimal", "value": -2},
+     "note": "Worst-case robustness is negative: an allowed behavior violates the property."},
+    {"tool": "maximize", "args": {"objective": "G[0,2] (x <= 3)", "contract": "$Range"},
+     "needs": "python:z3", "expect": {"status": "optimal", "value": 3},
+     "note": "Positive best-case robustness does not prove the property for every behavior."},
+    {"tool": "maximize", "args": {"objective": "2 * x", "subject_to": "x <= 5 & x >= 0", "variables": {"x": "real"}},
+     "needs": "python:z3", "expect": {"status": "optimal", "value": 10},
+     "note": "An arithmetic objective under explicitly typed constraints."}
+  ]
+}

@@ -38,5 +38,5 @@ jobs:
 
       - name: Install and test
         run: |
-          pip install ".[test]"
+          pip install ".[test,z3]"
           pytest -q

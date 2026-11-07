@@ -117,6 +117,11 @@ check comes with a counterexample trace: the states of `prefix`, then the
 states of `loop` repeated forever. Use the trace to find which assumption or
 guarantee to change.
 
+Optimization: minimize and maximize optimize expressions or property robustness over
+behaviors of a contract (assumptions AND guarantees), with bounded temporal
+intervals. minimize of a property is its worst-case robustness; maximize is
+its best case. These tools do not repair parameters and require z3.
+
 Repair: repair finds the values of named constants (the "constants" of a
 contract, used by name in its formulas) that make a check pass (refines,
 impl, env, verify, compat, consist), changing them as little as possible
@@ -566,6 +571,44 @@ def is_environment(contract: ContractSpec, environment: str | None = None,
         raise ValueError("give the environment as a formula or as a state machine")
     return chase_cps.is_environment(m if m is not None else environment, c, backend,
                                     context=context, timeout=timeout).to_dict()
+
+
+def _optimize(direction, objective, contract, subject_to, variables, timeout):
+    if (contract is None) == (subject_to is None):
+        raise ValueError("give exactly one of contract or subject_to")
+    constraints = contract.build() if contract is not None else subject_to
+    return getattr(chase_cps, direction)(
+        objective, constraints, _variables(variables or {}), timeout=timeout).to_dict()
+
+
+@tool
+def minimize(objective: str, contract: ContractSpec | None = None,
+             subject_to: str | list[str] | None = None,
+             variables: dict[str, VarType] | None = None, timeout: float = 300) -> dict:
+    """Minimize an arithmetic expression, or a numeric property's robustness,
+    over behaviors satisfying a contract's assumptions AND guarantees, or
+    subject_to formulas with explicit variable types. Give exactly one of
+    contract or subject_to. Temporal formulas must have a bounded horizon.
+    For a property objective, this gives its worst-case robustness, rather
+    than repairing parameters. Requires chase-cps[z3]. Returns optimal,
+    not_attained (an infimum), unbounded, infeasible, or unknown, with a
+    value and a witness when available."""
+    return _optimize("minimize", objective, contract, subject_to, variables, timeout)
+
+
+@tool
+def maximize(objective: str, contract: ContractSpec | None = None,
+             subject_to: str | list[str] | None = None,
+             variables: dict[str, VarType] | None = None, timeout: float = 300) -> dict:
+    """Maximize an arithmetic expression, or a numeric property's robustness,
+    under a contract's assumptions AND guarantees, or subject_to formulas.
+    Give exactly one of contract or subject_to; formulas need explicit
+    variable types. Temporal formulas must have a bounded horizon. For a
+    property objective this is best-case robustness, not a guarantee for
+    every behavior. Requires chase-cps[z3]. Returns optimal, not_attained
+    (a supremum), unbounded, infeasible, or unknown, with a value and a
+    witness when available."""
+    return _optimize("maximize", objective, contract, subject_to, variables, timeout)
 
 
 class Range(BaseModel):
